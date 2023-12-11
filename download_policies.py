@@ -8,14 +8,21 @@ from bs4 import BeautifulSoup
 import requests
 import re
 
+user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
 def sanitize_filename(filename):
     """Sanitize the filename by removing or replacing invalid characters."""
     return re.sub(r'[\\/*?:"<>|]', '', filename)
 
+
 def download_pdf(url, filename):
-    response = requests.get(url, allow_redirects=True)
-    with open(filename, 'wb') as file:
+    headers = {
+        'User-Agent': user_agent
+    }
+    response = requests.get(url, headers=headers, allow_redirects=True)
+    with open(f'./docs/{filename}', 'wb') as file:
         file.write(response.content)
+
 
 def get_iframe_src_and_title(driver, url):
     driver.get(url)
@@ -33,6 +40,7 @@ def get_iframe_src_and_title(driver, url):
     title = title_element.get_text(strip=True) if title_element else 'Untitled'
     return (iframe['src'] if iframe else None, title)
 
+
 def get_links_selenium(driver, url):
     driver.get(url)
     try:
@@ -45,6 +53,7 @@ def get_links_selenium(driver, url):
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     return [a['href'] for a in soup.select('div.browse-link a')]
+
 
 # Setup WebDriver using ChromeDriverManager
 service = Service(ChromeDriverManager().install())
@@ -70,11 +79,12 @@ for folder_link in folder_links:
     # Iterate over documents and download PDFs
     for doc_link in document_links:
         pdf_src, title = get_iframe_src_and_title(driver, f'{base_url}{doc_link}')
-        print('found source for PDF: ' + pdf_src + ' with name ' + title)
         if pdf_src:
             pdf_url = f'{base_url}{pdf_src}'
             sanitized_title = sanitize_filename(title)
             filename = f"{sanitized_title}.pdf"
+
+            print('found source for PDF: ' + pdf_url + ' with name ' + filename)
             # Download PDF
             download_pdf(pdf_url, filename)
             print(f'Downloaded {filename}')
