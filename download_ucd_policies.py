@@ -8,6 +8,9 @@ from bs4 import BeautifulSoup
 import requests
 import re
 
+## UCD Policies are on `https://ucdavispolicy.ellucid.com`
+## TODO: download all policies from all binders or at least the big ones
+
 user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 def sanitize_filename(filename):
@@ -68,7 +71,7 @@ folder_links = get_links_selenium(driver, home_url)
 print(len(folder_links))
 
 # for testing, only use the first 2 links
-folder_links = folder_links[:2]
+# folder_links = folder_links[:2]
 
 # Iterate over folders and get document links
 for folder_link in folder_links:
