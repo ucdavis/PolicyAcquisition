@@ -1,1 +1,6 @@
+# PDF policies
 docs/
+# PDF -> Text converted policies
+output/
+
+.DS_Store
