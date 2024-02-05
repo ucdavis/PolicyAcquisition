@@ -1,5 +1,16 @@
 import os
 from pypdf import PdfReader
+import pytesseract
+from pdf2image import convert_from_path
+
+def extract_text_from_image(input_path):
+    images = convert_from_path(input_path, 300) # 300 DPI, play with larger values for better quality
+    
+    text = ''
+    for image in images:
+        text += pytesseract.image_to_string(image) or ''
+    
+    return text
 
 def extract_text_from_pdf(input_path, output_path):
     with open(input_path, 'rb') as file:
@@ -7,6 +18,11 @@ def extract_text_from_pdf(input_path, output_path):
         text = ''
         for page in pdf.pages:
             text += page.extract_text() or ''  # Adding a fallback of empty string if None is returned
+
+        # if text is empty, then we might have a scanned pdf -- try to extract text using OCR
+        if not text:
+            text = extract_text_from_image(input_path)
+
         with open(output_path, 'w') as output_file:
             output_file.write(text)
 
