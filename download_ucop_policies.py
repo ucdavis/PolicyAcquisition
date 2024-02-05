@@ -1,3 +1,4 @@
+import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -5,10 +6,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from typing import List
+from urllib.parse import urljoin
 import requests
 import re
+import json
 
 ## UCOP Policies are on `https://policy.ucop.edu`
+base_url = 'https://policy.ucop.edu'
+
+class PolicyDetails:
+    def __init__(self, title, url, effective_date=None, issuance_date=None, responsible_office=None, subject_areas=[]):
+        self.title = title
+        self.effective_date = effective_date
+        self.issuance_date = issuance_date
+        self.url = url
+        self.responsible_office = responsible_office
+        self.subject_areas = subject_areas
+
+    def __str__(self):
+        return f"{self.title} - {self.url} - {self.effective_date} - {self.issuance_date} - {self.responsible_office} - {self.subject_areas}"
 
 user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
@@ -18,6 +35,11 @@ def sanitize_filename(filename):
 
 
 def download_pdf(url, filename):
+     # if we already have the file, skip it
+    if os.path.exists(f"./docs/ucop/{filename}"):
+        print(f"Already have {filename}")
+        return
+    
     headers = {
         'User-Agent': user_agent
     }
@@ -26,7 +48,7 @@ def download_pdf(url, filename):
         file.write(response.content)
 
 def get_links(driver, url):
-    policy_link_info_list = []
+    policy_link_info_list: List[PolicyDetails] = []
 
     driver.get(url)
     try:
@@ -46,7 +68,9 @@ def get_links(driver, url):
     links = accordion.find_all('a', class_='blue')
 
     for link in links:
-        href = link['href']  # Get href directly from the link tag
+        # Get href directly from the link tag but convert to absolute url
+        href = urljoin(base_url, link['href'])
+
         # For the title, find the first (or only) 'span' with class 'icon pdf' within the link
         span = link.find('span', class_='icon pdf')
         if span:  # Check if the span exists
@@ -54,7 +78,24 @@ def get_links(driver, url):
         else:
             title = "Title not found"
 
-        policy_link_info_list.append((href, title))
+        # get the parent of the link and find the next 4 sibling divs - subject areas, effective date, issuance date, responsible office
+        parent = link.parent
+
+        # Get the next 4 sibling divs
+        siblings = parent.find_next_siblings('div')
+
+        # Get the text from each sibling but ignore the <cite> tag
+
+        # Get the text from each sibling
+        subject_areas_text = siblings[0].text.replace(siblings[0].find('cite').text, '').strip()
+        effective_date = siblings[1].text.replace(siblings[1].find('cite').text, '').strip()
+        issuance_date = siblings[2].text.replace(siblings[2].find('cite').text, '').strip()
+        responsible_office = siblings[3].text.replace(siblings[3].find('cite').text, '').strip()
+
+        # subject areas is a comma separated list, so split it into a list
+        subject_areas = subject_areas_text.split(',')
+
+        policy_link_info_list.append(PolicyDetails(title, href, effective_date, issuance_date, responsible_office, subject_areas))
 
     return policy_link_info_list
 
@@ -62,19 +103,31 @@ def get_links(driver, url):
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service)
 
-base_url = 'https://policy.ucop.edu'
 # pull a list of all policies
 home_url = f'{base_url}/advanced-search.php?action=welcome&op=browse&all=1'
 
 link_info_list = get_links(driver, home_url)
 
+# save the list of policies to a JSON file for later
+policy_details_json = 'ucop_policies.json'
+
+# delete the file if it exists
+try:
+    os.remove(policy_details_json)
+except OSError:
+    pass
+
+with open('./docs/ucop/ucop_policies.json', 'w') as f:
+    json.dump([policy.__dict__ for policy in link_info_list], f, indent=4)
+
 # iterate through the list of links and download the pdfs
 for link_info in link_info_list:
-    href, title = link_info
-    print(f"Downloading {title} from {href}")
-    download_pdf(f"{base_url}/{href}", f"{sanitize_filename(title)}.pdf")
+    url = link_info.url
+    title = link_info.title
+    print(f"Downloading {title} from {url}")
+    download_pdf(url, f"{sanitize_filename(title)}.pdf")
 
-print(link_info_list)
+# print(link_info_list)
 
 # Close the driver
 driver.quit()
