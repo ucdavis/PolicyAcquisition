@@ -4,3 +4,4 @@ docs/
 output/
 
 .DS_Store
+.idea/
