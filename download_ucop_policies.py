@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 import requests
 import re
 import json
+import os
 
 ## UCOP Policies are on `https://policy.ucop.edu`
 base_url = 'https://policy.ucop.edu'
@@ -18,6 +19,7 @@ base_url = 'https://policy.ucop.edu'
 class PolicyDetails:
     def __init__(self, title, url, effective_date=None, issuance_date=None, responsible_office=None, subject_areas=[]):
         self.title = title
+        self.filename = sanitize_filename(title)
         self.effective_date = effective_date
         self.issuance_date = issuance_date
         self.url = url
@@ -85,8 +87,6 @@ def get_links(driver, url):
         siblings = parent.find_next_siblings('div')
 
         # Get the text from each sibling but ignore the <cite> tag
-
-        # Get the text from each sibling
         subject_areas_text = siblings[0].text.replace(siblings[0].find('cite').text, '').strip()
         effective_date = siblings[1].text.replace(siblings[1].find('cite').text, '').strip()
         issuance_date = siblings[2].text.replace(siblings[2].find('cite').text, '').strip()
@@ -108,8 +108,12 @@ home_url = f'{base_url}/advanced-search.php?action=welcome&op=browse&all=1'
 
 link_info_list = get_links(driver, home_url)
 
-# save the list of policies to a JSON file for later
-policy_details_json = 'ucop_policies.json'
+# create a directory to save the pdfs
+directory = './docs/ucop'
+os.makedirs(directory, exist_ok=True)
+
+# save the list of policies with other metadata to a JSON file for later
+policy_details_json = os.path.join(directory, 'metadata.json')
 
 # delete the file if it exists
 try:
@@ -117,15 +121,16 @@ try:
 except OSError:
     pass
 
-with open('./docs/ucop/ucop_policies.json', 'w') as f:
+with open(os.path.join(directory, 'metadata.json'), 'w') as f:
     json.dump([policy.__dict__ for policy in link_info_list], f, indent=4)
 
 # iterate through the list of links and download the pdfs
 for link_info in link_info_list:
     url = link_info.url
     title = link_info.title
-    print(f"Downloading {title} from {url}")
-    download_pdf(url, f"{sanitize_filename(title)}.pdf")
+    pdf_filename = f"{link_info.filename}.pdf"
+    print(f"Downloading {title} from {url} as {pdf_filename}")
+    download_pdf(url, pdf_filename)
 
 # print(link_info_list)
 
