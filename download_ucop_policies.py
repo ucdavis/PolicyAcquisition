@@ -12,29 +12,12 @@ import requests
 import re
 import json
 import os
+from policy_details import PolicyDetails
 
 ## UCOP Policies are on `https://policy.ucop.edu`
 base_url = 'https://policy.ucop.edu'
 
-class PolicyDetails:
-    def __init__(self, title, url, effective_date=None, issuance_date=None, responsible_office=None, subject_areas=[]):
-        self.title = title
-        self.filename = sanitize_filename(title)
-        self.effective_date = effective_date
-        self.issuance_date = issuance_date
-        self.url = url
-        self.responsible_office = responsible_office
-        self.subject_areas = subject_areas
-
-    def __str__(self):
-        return f"{self.title} - {self.url} - {self.effective_date} - {self.issuance_date} - {self.responsible_office} - {self.subject_areas}"
-
 user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-def sanitize_filename(filename):
-    """Sanitize the filename by removing or replacing invalid characters."""
-    return re.sub(r'[\\/*?:"<>|]', '', filename)
-
 
 def download_pdf(url, filename):
      # if we already have the file, skip it
