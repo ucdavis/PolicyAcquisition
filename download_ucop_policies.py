@@ -1,7 +1,7 @@
 import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -99,9 +99,21 @@ def get_links(driver, url):
 
     return policy_link_info_list
 
-# Setup WebDriver using ChromeDriverManager
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service)
+# Set up Selenium options
+options = Options()
+options.add_argument('--headless')  # run headless Chrome
+options.add_argument('--disable-gpu')  # applicable to windows os only
+options.add_argument('--no-sandbox')  # Bypass OS security model
+options.add_argument('--disable-dev-shm-usage')  # overcome limited resource problems
+
+# Set up the Remote service URL pointing to where the Selenium Server is running
+remote_url = "http://selenium:4444/wd/hub"
+
+# Create a new instance of Chrome
+driver = webdriver.Remote(
+    command_executor=remote_url,
+    options=options
+)
 
 # pull a list of all policies
 home_url = f'{base_url}/advanced-search.php?action=welcome&op=browse&all=1'
