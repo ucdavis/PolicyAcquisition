@@ -93,7 +93,7 @@ def get_links(driver, url):
         responsible_office = siblings[3].text.replace(siblings[3].find('cite').text, '').strip()
 
         # subject areas is a comma separated list, so split it into a list
-        subject_areas = subject_areas_text.split(',')
+        subject_areas = [area.strip() for area in subject_areas_text.split(',')]
 
         policy_link_info_list.append(PolicyDetails(title, href, effective_date, issuance_date, responsible_office, subject_areas))
 
