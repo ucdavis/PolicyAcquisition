@@ -164,12 +164,18 @@ def get_nested_links_selenium(driver, url):
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
     file_links: List[PolicyDetails] = []
+
+    # first get all links on the homepage of the binder
     all_links: List[PolicyDetails] = get_policy_details_from_table(soup)
 
     # links will either be a folder or a document
     # folders will start with `/manuals/binder` and documents will start with `/documents`
     # if we find a folder, we need to go into it and get the documents
     for link in all_links:
+        # if the folder is in the ignore list, skip it
+        if link.title in ignore_folders:
+            continue
+
         if "/manuals/binder" in link.url:
             nested_links = get_links_selenium(driver, link.url)
 
@@ -242,25 +248,31 @@ def download_all_file_links(driver, binderName, doc_links: List[PolicyDetails]):
             download_pdf(pdf_url, binderName, filename)
             print(f"Downloaded {filename}")
 
-# Setup WebDriver using ChromeDriverManager
-service = Service(ChromeDriverManager().install())
-driver = webdriver.Chrome(service=service)
+def get_driver():
+    # Try to get the chrome driver, and if not found, use our remove selenium server
+    try:
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service)
+        return driver
+    except:
+        # Set up Selenium options
+        options = Options()
+        options.add_argument('--headless')  # run headless Chrome
+        options.add_argument('--disable-gpu')  # applicable to windows os only
+        options.add_argument('--no-sandbox')  # Bypass OS security model
+        options.add_argument('--disable-dev-shm-usage')  # overcome limited resource problems
 
-# # Set up Selenium options
-# options = Options()
-# options.add_argument('--headless')  # run headless Chrome
-# options.add_argument('--disable-gpu')  # applicable to windows os only
-# options.add_argument('--no-sandbox')  # Bypass OS security model
-# options.add_argument('--disable-dev-shm-usage')  # overcome limited resource problems
+        # Set up the Remote service URL pointing to where the Selenium Server is running
+        remote_url = "http://selenium:4444/wd/hub"
 
-# # Set up the Remote service URL pointing to where the Selenium Server is running
-# remote_url = "http://selenium:4444/wd/hub"
-
-# # Create a new instance of Chrome
-# driver = webdriver.Remote(
-#     command_executor=remote_url,
-#     options=options
-# )
+        # Create a new instance of Chrome
+        driver = webdriver.Remote(
+            command_executor=remote_url,
+            options=options
+        )
+        return driver
+    
+driver = get_driver()
 
 for binder in binders:
     home_url = f"{home_url_minus_binder}/{binder}"
