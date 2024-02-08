@@ -1,11 +1,17 @@
+import re
+
 class PolicyDetails:
-    def __init__(self, title, url, effective_date=None, issuance_date=None, responsible_office=None, subject_areas=[]):
+    """
+    Represents the details of a policy. Will be used as common metadata for all policies
+    """
+    def __init__(self, title="", url="", effective_date=None, issuance_date=None, responsible_office=None, subject_areas=[], keywords=[]):
         self.title = title
         self.filename = sanitize_filename(title)
         self.effective_date = effective_date
         self.issuance_date = issuance_date
         self.url = url
         self.responsible_office = responsible_office
+        self.keywords = keywords
         self.subject_areas = subject_areas
 
     def __str__(self):
