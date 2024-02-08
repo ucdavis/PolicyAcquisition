@@ -73,11 +73,12 @@ def get_links(driver, url):
         effective_date = siblings[1].text.replace(siblings[1].find('cite').text, '').strip()
         issuance_date = siblings[2].text.replace(siblings[2].find('cite').text, '').strip()
         responsible_office = siblings[3].text.replace(siblings[3].find('cite').text, '').strip()
+        classifications = ["Policy"]
 
         # subject areas is a comma separated list, so split it into a list
         subject_areas = [area.strip() for area in subject_areas_text.split(',')]
 
-        policy_link_info_list.append(PolicyDetails(title, href, effective_date, issuance_date, responsible_office, subject_areas))
+        policy_link_info_list.append(PolicyDetails(title, href, effective_date, issuance_date, responsible_office, subject_areas, [], classifications))
 
     return policy_link_info_list
 

@@ -29,8 +29,10 @@ binders = {
     "15": "ucddelegation",
 }
 
-# list of folder to ignore
-ignore_folders = ["Parent Directory", "PPM Revision History", "PPSM Revision History"]
+# never navigate into these folders
+ignore_folders = ["Parent Directory"]
+# tag these folders as revision history
+# revision_folders = ["PPM Revision History", "PPSM Revision History"]
 
 user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -117,6 +119,8 @@ def get_policy_details_from_table(soup: BeautifulSoup):
                 policyRow.keywords = [keyword.strip() for keyword in text.split(",")]
             elif col_id == "standardReferences":
                 policyRow.subject_areas = [area.strip() for area in text.split(";")]
+            elif col_id == "documentClassifications":
+                policyRow.classifications = [classification.strip() for classification in text.split(",")]
             elif col_id == "element":
                 # this is the actual document link
                 # we want to look inside this column and pull out the div.browse-link -> a tag
@@ -181,12 +185,18 @@ def get_nested_links_selenium(driver, url):
 
             # occasionally we can go 3 levels deep
             for nested_link in nested_links:
+                if nested_link.title in ignore_folders:
+                    continue
+
                 if "/manuals/binder" in nested_link.url:
                     deep_nested_links = get_links_selenium(
                         driver, nested_link.url
                     )
 
                     for deep_nested_link in deep_nested_links:
+                        if deep_nested_link.title in ignore_folders:
+                            continue
+
                         if "/documents" in deep_nested_link.url:
                             file_links.append(deep_nested_link)
                 else:
