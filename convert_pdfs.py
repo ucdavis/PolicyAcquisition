@@ -36,6 +36,13 @@ def process_directory(input_directory, output_directory):
                 output_dir = os.path.dirname(output_path)
                 os.makedirs(output_dir, exist_ok=True)
                 extract_text_from_pdf(input_path, output_path)
+            elif file.endswith('.json'):
+                # just copy JSON files to the output directory without any processing
+                input_path = os.path.join(root, file)
+                output_path = os.path.join(output_directory, os.path.relpath(input_path, start=input_directory))
+                output_dir = os.path.dirname(output_path)
+                os.makedirs(output_dir, exist_ok=True)
+                os.system(f'cp {input_path} {output_path}')
 
 # Example usage
 input_directory = './docs'
