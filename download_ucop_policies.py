@@ -115,38 +115,44 @@ def get_driver():
         )
         return driver
 
-driver = get_driver()
 
-# pull a list of all policies
-home_url = f'{base_url}/advanced-search.php?action=welcome&op=browse&all=1'
+#### Main function
+#### This will read all of the policies, store their URLs in metadata.json, and then store each in a file
+#### Note: This will only add new policies to the folder, it will not overwrite existing or delete missing
+def download_ucop():
+    driver = get_driver()
 
-link_info_list = get_links(driver, home_url)
+    # pull a list of all policies
+    home_url = f'{base_url}/advanced-search.php?action=welcome&op=browse&all=1'
 
-# create a directory to save the pdfs
-directory = './docs/ucop'
-os.makedirs(directory, exist_ok=True)
+    link_info_list = get_links(driver, home_url)
 
-# save the list of policies with other metadata to a JSON file for later
-policy_details_json = os.path.join(directory, 'metadata.json')
+    # create a directory to save the pdfs
+    directory = './docs/ucop'
+    os.makedirs(directory, exist_ok=True)
 
-# delete the file if it exists
-try:
-    os.remove(policy_details_json)
-except OSError:
-    pass
+    # save the list of policies with other metadata to a JSON file for later
+    policy_details_json = os.path.join(directory, 'metadata.json')
 
-with open(os.path.join(directory, 'metadata.json'), 'w') as f:
-    json.dump([policy.__dict__ for policy in link_info_list], f, indent=4)
+    # delete the file if it exists
+    try:
+        os.remove(policy_details_json)
+    except OSError:
+        pass
 
-# iterate through the list of links and download the pdfs
-for link_info in link_info_list:
-    url = link_info.url
-    title = link_info.title
-    pdf_filename = f"{link_info.filename}.pdf"
-    print(f"Downloading {title} from {url} as {pdf_filename}")
-    download_pdf(url, pdf_filename)
+    with open(os.path.join(directory, 'metadata.json'), 'w') as f:
+        json.dump([policy.__dict__ for policy in link_info_list], f, indent=4)
 
-# print(link_info_list)
+    # iterate through the list of links and download the pdfs
+    for link_info in link_info_list:
+        url = link_info.url
+        title = link_info.title
+        pdf_filename = f"{link_info.filename}.pdf"
+        print(f"Downloading {title} from {url} as {pdf_filename}")
+        download_pdf(url, pdf_filename)
 
-# Close the driver
-driver.quit()
+    # Close the driver
+    driver.quit()
+
+
+
