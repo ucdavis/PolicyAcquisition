@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -15,14 +16,19 @@ import json
 import os
 from policy_details import PolicyDetails
 
+load_dotenv()  # This loads the environment variables from .env
+
+file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
+
 ## UCOP Policies are on `https://policy.ucop.edu`
 base_url = 'https://policy.ucop.edu'
 
 user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
-def download_pdf(url, filename):
+def download_pdf(url, directory, filename):
+    path = os.path.join(directory, filename)
      # if we already have the file, skip it
-    if os.path.exists(f"./docs/ucop/{filename}"):
+    if os.path.exists(path):
         print(f"Already have {filename}")
         return
     
@@ -30,7 +36,7 @@ def download_pdf(url, filename):
         'User-Agent': user_agent
     }
     response = requests.get(url, headers=headers, allow_redirects=True)
-    with open(f'./docs/ucop/{filename}', 'wb') as file:
+    with open(path, 'wb') as file:
         file.write(response.content)
 
 def get_links(driver, url):
@@ -127,7 +133,7 @@ def download_ucop():
     link_info_list = get_links(driver, home_url)
 
     # create a directory to save the pdfs
-    directory = './docs/ucop'
+    directory = os.path.join(file_storage_path_base, './docs/ucop')
     os.makedirs(directory, exist_ok=True)
 
     # save the list of policies with other metadata to a JSON file for later
@@ -148,7 +154,7 @@ def download_ucop():
         title = link_info.title
         pdf_filename = f"{link_info.filename}.pdf"
         print(f"Downloading {title} from {url} as {pdf_filename}")
-        download_pdf(url, pdf_filename)
+        download_pdf(url, directory, pdf_filename)
 
     # Close the driver
     driver.quit()

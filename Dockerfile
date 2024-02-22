@@ -1,4 +1,7 @@
-FROM mcr.microsoft.com/azure-functions/python:4-python3.11
+FROM --platform=linux/amd64 python:3.11-slim
+
+# Install dependencies required for adding a new repository
+RUN apt-get update && apt-get install -y wget gnupg2
 
 # Adding Google Chrome (for selenium) and Tesseract for OCR 
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
