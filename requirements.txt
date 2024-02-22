@@ -6,3 +6,5 @@ pdf2image===1.17.0
 pillow===10.2.0
 pytesseract===0.3.10
 webdriver-manager===4.0.1
+fastapi===0.109.2
+uvicorn===0.27.1
