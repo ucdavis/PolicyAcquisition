@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/azure-functions/python:4-python3.11
+FROM --platform=linux/amd64 python:3.11-slim
 
-# Set environment variable for display port
-ENV DISPLAY=:99
+# Install dependencies required for adding a new repository
+RUN apt-get update && apt-get install -y wget gnupg2
 
 # Adding Google Chrome (for selenium) and Tesseract for OCR 
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
@@ -14,8 +14,22 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     # Add additional packages here, before the cleanup line
     && rm -rf /var/lib/apt/lists/*  # Clean up to keep the image size down
 
-# Install Python dependencies
-COPY requirements.txt /
-RUN pip install -r /requirements.txt
+# Set the working directory in the container
+WORKDIR /app
 
-COPY . /home/site/wwwroot
+# Copy the current directory contents into the container
+COPY . .
+
+# Install Python dependencies
+RUN pip install -r requirements.txt
+
+# Make port 8000 available to the world outside this container
+EXPOSE 8000
+
+# Define environment variable
+ENV UVICORN_HOST=0.0.0.0
+ENV UVICORN_PORT=8000
+ENV UVICORN_LOG_LEVEL=info
+
+# Run app.py when the container launches using Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
