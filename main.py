@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import APIKeyHeader
 import threading
+from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
 
@@ -44,12 +45,28 @@ def long_running_download_ucop(task_id):
     download_ucop(update_progress)
     pass
 
+def long_running_download_ucd(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    download_ucd(update_progress)
+    pass
+
 ### Our API Endpoints
 @app.post("/api/downloadUcop")
 async def start_downloadUcop():
     # Use threading to avoid blocking the execution
     task_id = str(uuid.uuid4())
     thread = threading.Thread(target=long_running_download_ucop, args=(task_id,))
+    thread.start()
+    return {"message": "Download started successfully", "task_id": task_id}
+
+@app.post("/api/downloadUcd")
+async def start_downloadUcd():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=long_running_download_ucd, args=(task_id,))
     thread.start()
     return {"message": "Download started successfully", "task_id": task_id}
 

@@ -1,4 +1,5 @@
 from urllib.parse import urljoin
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -15,6 +16,10 @@ import time
 import json
 
 from policy_details import PolicyDetails
+
+load_dotenv()  # This loads the environment variables from .env
+
+file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
 ## UCD Policies are on `https://ucdavispolicy.ellucid.com`
 ## There are several different binders each with their own set of policies
@@ -41,15 +46,14 @@ def sanitize_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
 
 
-def download_pdf(url, folderName, filename):
+def download_pdf(url, directory, filename):
     headers = {"User-Agent": user_agent}
     response = requests.get(url, headers=headers, allow_redirects=True)
 
     # Create the folder if it doesn't exist
-    folder_path = f"./docs/{folderName}"
-    os.makedirs(folder_path, exist_ok=True)
+    os.makedirs(directory, exist_ok=True)
 
-    with open(os.path.join(folder_path, filename), "wb") as file:
+    with open(os.path.join(directory, filename), "wb") as file:
         file.write(response.content)
 
 
@@ -206,36 +210,8 @@ def get_nested_links_selenium(driver, url):
 
     return file_links
 
-
-# download all the links in a folder. can only go one level deep
-def download_all_links(driver, binderName, folder_links):
-    # Iterate over folders and get document links
-    for folder_link in folder_links:
-        document_links = get_links_selenium(driver, f"{base_url}{folder_link}")
-
-        print("Got back documents" + str(len(document_links)))
-
-        # Iterate over documents and download PDFs
-        for doc_link in document_links:
-            pdf_src, title = get_iframe_src_and_title(driver, f"{base_url}{doc_link}")
-            if pdf_src:
-                pdf_url = f"{base_url}{pdf_src}"
-                sanitized_title = sanitize_filename(title)
-                filename = f"{sanitized_title}.pdf"
-
-                # if we already have the file, skip it
-                if os.path.exists(f"./docs/{binderName}/{filename}"):
-                    print(f"Already have {filename}")
-                    continue
-
-                print("found source for PDF: " + pdf_url + " with name " + filename)
-                # Download PDF
-                download_pdf(pdf_url, binderName, filename)
-                print(f"Downloaded {filename}")
-
-
 # downloads files but will not go into folders
-def download_all_file_links(driver, binderName, doc_links: List[PolicyDetails]):
+def download_all_file_links(driver, directory, doc_links: List[PolicyDetails]):
     if not isinstance(doc_links, list):
         raise TypeError("doc_links must be a list")
 
@@ -244,7 +220,7 @@ def download_all_file_links(driver, binderName, doc_links: List[PolicyDetails]):
         filename = f"{sanitize_filename(doc_link.title)}.pdf"
 
         # if we already have the file, skip it
-        if os.path.exists(f"./docs/{binderName}/{filename}"):
+        if os.path.exists(os.path.join(directory, filename)):
             print(f"Already have {filename}")
             continue
 
@@ -255,7 +231,7 @@ def download_all_file_links(driver, binderName, doc_links: List[PolicyDetails]):
 
             print("found source for PDF: " + pdf_url + " with name " + filename)
             # Download PDF
-            download_pdf(pdf_url, binderName, filename)
+            download_pdf(pdf_url, directory, filename)
             print(f"Downloaded {filename}")
 
 def get_driver():
@@ -282,33 +258,48 @@ def get_driver():
         )
         return driver
     
-driver = get_driver()
 
-for binder in binders:
-    home_url = f"{home_url_minus_binder}/{binder}"
-    file_links = get_nested_links_selenium(driver, home_url)
+#### Main function
+#### This will read all of the policies, store their URLs in metadata.json, and then store each in a file
+#### Note: This will only add new policies to the folder, it will not overwrite existing or delete missing
+def download_ucd(update_progress):
+    """Download all UCD Ellucid policies and save them to the file storage path."""
 
-    print("Got back all links" + str(len(file_links)))
-    print(file_links[0])
+    driver = get_driver()
 
-    binderName = binders[binder]
-    # create a directory to save the pdfs
-    directory = os.path.join('./docs', binderName)
-    os.makedirs(directory, exist_ok=True)
+    update_progress("Starting UCD download process...")
 
-    # save the list of policies with other metadata to a JSON file for later
-    policy_details_json = os.path.join(directory, 'metadata.json')
+    for binder in binders:
+        update_progress(f"Starting download for {binders[binder]}")
 
-    # delete the file if it exists
-    try:
-        os.remove(policy_details_json)
-    except OSError:
-        pass
+        home_url = f"{home_url_minus_binder}/{binder}"
+        file_links = get_nested_links_selenium(driver, home_url)
 
-    with open(os.path.join(directory, 'metadata.json'), 'w') as f:
-        json.dump([policy.__dict__ for policy in file_links], f, indent=4)
+        print("Got back all links" + str(len(file_links)))
+        print(file_links[0])
 
-    download_all_file_links(driver, binderName, file_links)
+        update_progress(f"Got back {len(file_links)} links for {binders[binder]}")
 
-# Close the driver
-driver.quit()
+        binderName = binders[binder]
+        # create a directory to save the pdfs
+
+        directory = os.path.join(file_storage_path_base, './docs/ucd/', binderName)
+        
+        os.makedirs(directory, exist_ok=True)
+
+        # save the list of policies with other metadata to a JSON file for later
+        policy_details_json = os.path.join(directory, 'metadata.json')
+
+        # delete the file if it exists
+        try:
+            os.remove(policy_details_json)
+        except OSError:
+            pass
+
+        with open(os.path.join(directory, 'metadata.json'), 'w') as f:
+            json.dump([policy.__dict__ for policy in file_links], f, indent=4)
+
+        download_all_file_links(driver, directory, file_links)
+
+    # Close the driver
+    driver.quit()
