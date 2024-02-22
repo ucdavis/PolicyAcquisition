@@ -237,10 +237,17 @@ def download_all_file_links(driver, directory, doc_links: List[PolicyDetails]):
 def get_driver():
     # Try to get the chrome driver, and if not found, use our remove selenium server
     try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service)
+        # Use the ChromeDriverManager to install the latest version of ChromeDriver
+        # uncomment if you are running locally and want to see the browser, then modify webdriver.Chrome to use the service
+        # service = Service(ChromeDriverManager().install())
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        driver = webdriver.Chrome(options=chrome_options)
         return driver
     except:
+        print("Using remote driver")
         # Set up Selenium options
         options = Options()
         options.add_argument('--headless')  # run headless Chrome
