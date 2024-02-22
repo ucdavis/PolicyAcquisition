@@ -1,6 +1,6 @@
 pypdf===4.0.1
 selenium===4.16.0
-cryptography===42.0.2
+cryptography===42.0.4
 beautifulsoup4===4.12.2
 pdf2image===1.17.0
 pillow===10.2.0
