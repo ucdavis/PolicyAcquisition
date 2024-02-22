@@ -124,8 +124,11 @@ def get_driver():
 #### Main function
 #### This will read all of the policies, store their URLs in metadata.json, and then store each in a file
 #### Note: This will only add new policies to the folder, it will not overwrite existing or delete missing
-def download_ucop():
+def download_ucop(update_progress):
+    """Download all UCOP policies and save them to the file storage path."""
     driver = get_driver()
+
+    update_progress("Starting UCOP download process...")
 
     # pull a list of all policies
     home_url = f'{base_url}/advanced-search.php?action=welcome&op=browse&all=1'
@@ -148,13 +151,28 @@ def download_ucop():
     with open(os.path.join(directory, 'metadata.json'), 'w') as f:
         json.dump([policy.__dict__ for policy in link_info_list], f, indent=4)
 
+    total_links = len(link_info_list)
+
+    # provide 20 status updates during the process
+    total_updates = 20
+
+    # Calculate the frequency of updates
+    update_frequency = total_links // total_updates
+
     # iterate through the list of links and download the pdfs
-    for link_info in link_info_list:
+    for i, link_info in enumerate(link_info_list):
         url = link_info.url
         title = link_info.title
         pdf_filename = f"{link_info.filename}.pdf"
+
+        if (i +  1) % update_frequency ==  0:
+            progress_percentage = round(((i+1) / total_links) *  100,  2)
+            update_progress(f"{progress_percentage:.2f}% - Downloading {title} from {url} as {pdf_filename} - {i+1} of {total_links}")
+
         print(f"Downloading {title} from {url} as {pdf_filename}")
         download_pdf(url, directory, pdf_filename)
+
+    update_progress("Finished UCOP download process")
 
     # Close the driver
     driver.quit()
