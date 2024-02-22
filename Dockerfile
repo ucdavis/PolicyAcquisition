@@ -17,11 +17,14 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the current directory contents into the container
-COPY . .
+# Copy the requirements file into the container
+COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install -r requirements.txt
+
+# Copy the current directory contents into the container
+COPY . .
 
 # Make port 8000 available to the world outside this container
 EXPOSE 8000

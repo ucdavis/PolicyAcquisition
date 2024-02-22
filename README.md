@@ -34,6 +34,26 @@ Welcome to **PolicyAcquisition**, a set of Python scripts designed to streamline
     python convert_pdfs.py
     ```
 
+## Deployment:
+We are using an Azure Container App to deploy new versions -- currently the process is manual.  When you want to push a new version, you can do so by running the following commands:
+
+1. **Build the Docker Image**: Build the Docker image using the following command (change version number as needed):
+```
+docker build -t policywonkcontainers.azurecr.io/policyacquisition:v6 .
+```
+2. **Login to Azure Container Registry**: Login to the Azure Container Registry using the following command (if needed):
+```
+az acr login --name PolicyWonkContainers
+```
+3. **Push the Docker Image**: Push the Docker image to the Azure Container Registry using the following command:
+```
+docker push policywonkcontainers.azurecr.io/policyacquisition:v6
+```
+4. **Deploy the Image**: Deploy the image to the Azure Container App using the following command:
+```
+az webapp config container set --name policyacquisition --resource-group policy --docker-custom-image-name policywonkcontainers.azurecr.io/policyacquisition:v6
+```
+
 ## Contribution:
 Your contributions are welcome! Whether it's adding new features, improving documentation, or reporting bugs, please feel free to open an issue or submit a pull request.
 
