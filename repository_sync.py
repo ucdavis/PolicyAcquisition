@@ -71,8 +71,8 @@ def sync_policies(update_progress):
 
         # Step 1: Initialize the Repo & Ensure "[branch_name]" Branch
         try:
-            # Clone the repo
-            repo = Repo.clone_from(remote_url, temp_dir)
+            # Clone the repo with depth 1 (shallow clone, no need to download the entire history)
+            repo = Repo.clone_from(remote_url, temp_dir, depth=1)
 
             # Ensure "main" branch is checked out
             if repo.active_branch.name != branch_name:
