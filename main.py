@@ -8,6 +8,7 @@ from convert_pdfs import convert_pdfs
 from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
+from repository_sync import sync_policies
 
 load_dotenv()  # This loads the environment variables from .env
 
@@ -62,6 +63,14 @@ def long_running_convert_pdfs(task_id):
     convert_pdfs(update_progress)
     pass
 
+def long_running_sync_content(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    sync_policies(update_progress)
+    pass
+
 ### Our API Endpoints
 @app.post("/api/downloadUcop")
 async def start_downloadUcop():
@@ -86,6 +95,14 @@ async def start_convertPdfs():
     thread = threading.Thread(target=long_running_convert_pdfs, args=(task_id,))
     thread.start()
     return {"message": "Conversion started successfully", "task_id": task_id}
+
+@app.post("/api/syncPolicies")
+async def start_sync_policies():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=long_running_sync_content, args=(task_id,))
+    thread.start()
+    return {"message": "Sync started successfully", "task_id": task_id}
 
 ### Status Endpoint
 # This endpoint will return the history of the given task
