@@ -135,7 +135,7 @@ def download_ucop(update_progress):
         title = link_info.title
         pdf_filename = f"{link_info.filename}.pdf"
 
-        if (i +  1) % update_frequency ==  0:
+        if update_frequency > 0 and (i + 1) % update_frequency == 0:
             progress_percentage = round(((i+1) / total_links) *  100,  2)
             update_progress(f"{progress_percentage:.2f}% - Downloading {title} from {url} as {pdf_filename} - {i+1} of {total_links}")
 

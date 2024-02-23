@@ -227,7 +227,7 @@ def download_all_file_links(driver, directory, doc_links: List[PolicyDetails], u
     for i, doc_link in enumerate(doc_links):
         filename = f"{sanitize_filename(doc_link.title)}.pdf"
 
-        if (i +  1) % update_frequency ==  0:
+        if update_frequency > 0 and (i + 1) % update_frequency == 0:
             progress_percentage = round(((i+1) / total_links) *  100,  2)
             update_progress(f"{progress_percentage:.2f}% - Downloading {filename} - {i+1} of {total_links}")
 
