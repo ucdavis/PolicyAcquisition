@@ -10,6 +10,7 @@ load_dotenv()  # This loads the environment variables from .env
 
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
+
 def extract_text_from_image(input_path):
     images = convert_from_path(
         input_path, 300
@@ -23,20 +24,23 @@ def extract_text_from_image(input_path):
 
 
 def extract_text_from_pdf(input_path, output_path):
-    with open(input_path, "rb") as file:
-        pdf = PdfReader(file)
-        text = ""
-        for page in pdf.pages:
-            text += (
-                page.extract_text() or ""
-            )  # Adding a fallback of empty string if None is returned
+    try:
+        with open(input_path, "rb") as file:
+            pdf = PdfReader(file)
+            text = ""
+            for page in pdf.pages:
+                text += (
+                    page.extract_text() or ""
+                )  # Adding a fallback of empty string if None is returned
 
-        # if text is empty, then we might have a scanned pdf -- try to extract text using OCR
-        if not text:
-            text = extract_text_from_image(input_path)
+            # if text is empty, then we might have a scanned pdf -- try to extract text using OCR
+            if not text:
+                text = extract_text_from_image(input_path)
 
-        with open(output_path, "w") as output_file:
-            output_file.write(text)
+            with open(output_path, "w") as output_file:
+                output_file.write(text)
+    except Exception as e:
+        print(f"Error extracting text from {input_path}: {e}")
 
 
 def process_directory(input_directory, output_directory, update_progress):
