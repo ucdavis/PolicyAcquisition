@@ -211,13 +211,25 @@ def get_nested_links_selenium(driver, url):
     return file_links
 
 # downloads files but will not go into folders
-def download_all_file_links(driver, directory, doc_links: List[PolicyDetails]):
+def download_all_file_links(driver, directory, doc_links: List[PolicyDetails], update_progress):
     if not isinstance(doc_links, list):
         raise TypeError("doc_links must be a list")
 
-    # Iterate over folders and get document links
-    for doc_link in doc_links:
+    total_links = len(doc_links)
+
+    # provide 20 status updates during the process
+    total_updates = 20
+
+    # Calculate the frequency of updates
+    update_frequency = total_links // total_updates
+    
+    # Iterate over dock_links and download each file
+    for i, doc_link in enumerate(doc_links):
         filename = f"{sanitize_filename(doc_link.title)}.pdf"
+
+        if (i +  1) % update_frequency ==  0:
+            progress_percentage = round(((i+1) / total_links) *  100,  2)
+            update_progress(f"{progress_percentage:.2f}% - Downloading {filename} - {i+1} of {total_links}")
 
         # if we already have the file, skip it
         if os.path.exists(os.path.join(directory, filename)):
@@ -306,7 +318,7 @@ def download_ucd(update_progress):
         with open(os.path.join(directory, 'metadata.json'), 'w') as f:
             json.dump([policy.__dict__ for policy in file_links], f, indent=4)
 
-        download_all_file_links(driver, directory, file_links)
+        download_all_file_links(driver, directory, file_links, update_progress)
 
     # Close the driver
     driver.quit()
