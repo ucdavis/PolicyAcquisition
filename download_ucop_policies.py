@@ -1,9 +1,6 @@
 import os
+from datetime import datetime
 from dotenv import load_dotenv
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -15,6 +12,7 @@ import re
 import json
 import os
 from policy_details import PolicyDetails
+from shared import get_driver
 
 load_dotenv()  # This loads the environment variables from .env
 
@@ -90,37 +88,6 @@ def get_links(driver, url):
 
     return policy_link_info_list
 
-def get_driver():
-    # Try to get the chrome driver, and if not found, use our remove selenium server
-    try:
-        # Use the ChromeDriverManager to install the latest version of ChromeDriver
-        # uncomment if you are running locally and want to see the browser, then modify webdriver.Chrome to use the service
-        # service = Service(ChromeDriverManager().install())
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(options=chrome_options)
-        return driver
-    except:
-        print("Using remote driver")
-        # Set up Selenium options
-        options = Options()
-        options.add_argument('--headless')  # run headless Chrome
-        options.add_argument('--disable-gpu')  # applicable to windows os only
-        options.add_argument('--no-sandbox')  # Bypass OS security model
-        options.add_argument('--disable-dev-shm-usage')  # overcome limited resource problems
-
-        # Set up the Remote service URL pointing to where the Selenium Server is running
-        remote_url = "http://selenium:4444/wd/hub"
-
-        # Create a new instance of Chrome
-        driver = webdriver.Remote(
-            command_executor=remote_url,
-            options=options
-        )
-        return driver
-
 #### Main function
 #### This will read all of the policies, store their URLs in metadata.json, and then store each in a file
 #### Note: This will only add new policies to the folder, it will not overwrite existing or delete missing
@@ -171,6 +138,11 @@ def download_ucop(update_progress):
 
         print(f"Downloading {title} from {url} as {pdf_filename}")
         download_pdf(url, directory, pdf_filename)
+
+    # create a JSON file with run details
+    with open(os.path.join(directory, 'run_details.json'), 'w') as f:
+        completed_date = datetime.now().isoformat()
+        json.dump({"total_policies": total_links, "status": "completed", "completed_date": completed_date}, f, indent=4)
 
     update_progress("Finished UCOP download process")
 
