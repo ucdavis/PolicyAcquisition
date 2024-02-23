@@ -38,6 +38,13 @@ We welcome contributions to PolicyAcquisition! Whether you're interested in addi
     uvicorn main:app
     ```
     Note: The API will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000) and you'll need to restart the API after making changes to the code.
+
+## Architectural Notes:
+- **Selenium**: Selenium is used to download policies using headless chrome in production and a selenium docker container in development. If you are running the code in a devcontainer, selenium will be automatically set up for you.
+- **File Structure**: Downloaded files are written to the `FILE_STORAGE_PATH` directory, `./docs/` for PDF documents, `./text/` for text documents. Inside each directory, there are subdirectories for policy groups (e.g. `./docs/ucop/` and `./docs/ucd/ucdppsm`).
+- **Metadata**: During the web scraping process, metadata for is collected and stored in a `metadata.json` file in each subdirectory. Additionally, `run_details.json` is created to store details about the download run -- the presence of this file indicates that the download process was successful.
+- **GitHub Sync**: The GitHub sync process creates a temporary directory to store the text versions of the downloaded policies, and then uses `git` to commit and push the changes to the Policy GitHub repository. This will sync all changes, including new policies, updated policies, and deleted policies.
+
 ## Deployment:
 We are using an Azure Container App to deploy new versions -- currently the process is manual.  When you want to push a new version, you can do so by running the `./deploy.sh` script.  This will build the Docker image, push it to the Azure Container Registry, and then update the Azure Container App to use the new image.
 
