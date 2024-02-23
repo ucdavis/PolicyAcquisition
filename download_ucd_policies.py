@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from urllib.parse import urljoin
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
@@ -16,6 +17,8 @@ from policy_details import PolicyDetails
 from shared import get_driver
 
 load_dotenv()  # This loads the environment variables from .env
+
+logger = logging.getLogger(__name__)
 
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
@@ -62,7 +65,7 @@ def get_iframe_src_and_title(driver, url):
             EC.presence_of_element_located((By.ID, "document-viewer"))
         )
     except Exception as e:
-        print(f"Error waiting for iframe: {e}")
+        logger.error(f"Error waiting for iframe: {e}")
         return None, None
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -80,7 +83,7 @@ def get_links_selenium(driver, url):
             EC.presence_of_element_located((By.CLASS_NAME, "browse-link"))
         )
     except Exception as e:
-        print(f"Error waiting for content: {e}")
+        logger.error(f"Error waiting for content: {e}")
         return []
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -131,7 +134,6 @@ def get_policy_details_from_table(soup: BeautifulSoup):
                 policyRow.url = urljoin(base_url, a["href"])
                 policyRow.filename = sanitize_filename(policyRow.title)
 
-        print(policyRow)
         all_links.append(policyRow)
 
     return all_links
@@ -145,7 +147,7 @@ def get_nested_links_selenium(driver, url):
             EC.presence_of_element_located((By.CLASS_NAME, "browse-link"))
         )
     except Exception as e:
-        print(f"Error waiting for content: {e}")
+        logger.error(f"Error waiting for content: {e}")
         return []
 
     # now change the select.page-size element to 100
@@ -231,18 +233,17 @@ def download_all_file_links(driver, directory, doc_links: List[PolicyDetails], u
 
         # if we already have the file, skip it
         if os.path.exists(os.path.join(directory, filename)):
-            print(f"Already have {filename}")
+            logger.info(f"Already have {filename}")
             continue
 
         pdf_src, _ = get_iframe_src_and_title(driver, doc_link.url)
 
         if pdf_src:
             pdf_url = urljoin(base_url, pdf_src)
-
-            print("found source for PDF: " + pdf_url + " with name " + filename)
+            logger.info("found source for PDF: " + pdf_url + " with name " + filename)
             # Download PDF
             download_pdf(pdf_url, directory, filename)
-            print(f"Downloaded {filename}")
+            logger.info(f"Downloaded {filename}")
 
 
 #### Main function
@@ -261,8 +262,7 @@ def download_ucd(update_progress):
         home_url = f"{home_url_minus_binder}/{binder}"
         file_links = get_nested_links_selenium(driver, home_url)
 
-        print("Got back all links" + str(len(file_links)))
-        print(file_links[0])
+        logger.info("Got back all links" + str(len(file_links)))
 
         update_progress(f"Got back {len(file_links)} links for {binders[binder]}")
 
