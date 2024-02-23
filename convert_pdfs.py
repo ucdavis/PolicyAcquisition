@@ -1,5 +1,5 @@
 from datetime import datetime
-import json
+import logging
 import os
 from dotenv import load_dotenv
 from pypdf import PdfReader
@@ -7,6 +7,8 @@ import pytesseract
 from pdf2image import convert_from_path
 
 load_dotenv()  # This loads the environment variables from .env
+
+logger = logging.getLogger(__name__)
 
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
@@ -40,7 +42,7 @@ def extract_text_from_pdf(input_path, output_path):
             with open(output_path, "w") as output_file:
                 output_file.write(text)
     except Exception as e:
-        print(f"Error extracting text from {input_path}: {e}")
+        logger.error(f"Error extracting text from {input_path}: {e}")
 
 
 def process_directory(input_directory, output_directory, update_progress):

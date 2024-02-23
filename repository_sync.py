@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -11,6 +12,8 @@ from convert_pdfs import convert_pdfs
 ### Used to sync the content folder to the https://github.com/ucdavis/policy repo
 
 load_dotenv()  # This loads the environment variables from .env
+
+logger = logging.getLogger(__name__)
 
 remote_name = "origin"
 branch_name = "sync"
@@ -39,7 +42,7 @@ def clear_content_folder(directory):
             elif os.path.isdir(item_path) and item != ".git":
                 shutil.rmtree(item_path)
     except OSError as e:
-        print(f"Error deleting files: {e}")
+        logger.error(f"Error deleting files: {e}")
         exit(1)
 
 def sync_policies(update_progress):
@@ -64,7 +67,7 @@ def sync_policies(update_progress):
     # first, create a temporary directory to store the content
     # Create a temporary directory using the context manager
     with tempfile.TemporaryDirectory() as temp_dir:
-        print(f'Temporary directory: {temp_dir}')
+        logger.info(f'Temporary directory: {temp_dir}')
 
         # Step 1: Initialize the Repo & Ensure "[branch_name]" Branch
         try:
@@ -83,7 +86,7 @@ def sync_policies(update_progress):
                 remote = repo.create_remote(remote_name, url=remote_url)
 
         except Exception as e:
-            print(f"Error initializing repo: {e}")
+            logger.error(f"Error initializing repo: {e}")
             exit(1)
 
         # Step 2: Pull/Fetch to Update Local Data. Reset to Remote State
@@ -91,7 +94,7 @@ def sync_policies(update_progress):
             repo.git.fetch("--all")
             repo.git.reset("--hard", f"{remote_name}/{branch_name}")
         except exc.GitCommandError as e:
-            print(f"Error updating local branch: {e}")
+            logger.error(f"Error updating local branch: {e}")
             exit(1)
 
         # Remove all files so we can replace with the new content
@@ -111,9 +114,9 @@ def sync_policies(update_progress):
             commit_message = "Policy Update " + datetime.now().strftime("%Y-%m-%d")
             repo.index.commit(commit_message)
             repo.git.push(remote_name, branch_name)
-            print("Changes have been pushed successfully.")
+            logger.info("Changes have been pushed successfully.")
         except exc.GitCommandError as e:
-            print(f"Error during commit/push: {e}")
+            logger.error(f"Error during commit/push: {e}")
             exit(1)
 
         update_progress("Sync complete at " + datetime.now().isoformat())

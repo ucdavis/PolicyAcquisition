@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from dotenv import load_dotenv
@@ -11,6 +12,9 @@ from download_ucop_policies import download_ucop
 from repository_sync import sync_policies
 
 load_dotenv()  # This loads the environment variables from .env
+
+### Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 ### Setup API Key Security
 API_KEY = os.getenv("POLICY_API_KEY")
