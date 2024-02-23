@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import APIKeyHeader
 import threading
+from convert_pdfs import convert_pdfs
 from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
@@ -53,6 +54,14 @@ def long_running_download_ucd(task_id):
     download_ucd(update_progress)
     pass
 
+def long_running_convert_pdfs(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    convert_pdfs(update_progress)
+    pass
+
 ### Our API Endpoints
 @app.post("/api/downloadUcop")
 async def start_downloadUcop():
@@ -69,6 +78,14 @@ async def start_downloadUcd():
     thread = threading.Thread(target=long_running_download_ucd, args=(task_id,))
     thread.start()
     return {"message": "Download started successfully", "task_id": task_id}
+
+@app.post("/api/convertPdfs")
+async def start_convertPdfs():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=long_running_convert_pdfs, args=(task_id,))
+    thread.start()
+    return {"message": "Conversion started successfully", "task_id": task_id}
 
 ### Status Endpoint
 # This endpoint will return the history of the given task

@@ -1,7 +1,14 @@
+from datetime import datetime
+import json
 import os
+from dotenv import load_dotenv
 from pypdf import PdfReader
 import pytesseract
 from pdf2image import convert_from_path
+
+load_dotenv()  # This loads the environment variables from .env
+
+file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
 def extract_text_from_image(input_path):
     images = convert_from_path(input_path, 300) # 300 DPI, play with larger values for better quality
@@ -44,7 +51,15 @@ def process_directory(input_directory, output_directory):
                 os.makedirs(output_dir, exist_ok=True)
                 os.system(f'cp {input_path} {output_path}')
 
-# Example usage
-input_directory = './docs'
-output_directory = './output'
-process_directory(input_directory, output_directory)
+def convert_pdfs(update_progress):
+    """
+    Converts PDF files from the input directory to text format and saves them in the output directory.
+    """
+    input_directory = os.path.join(file_storage_path_base, './docs')
+    output_directory =  os.path.join(file_storage_path_base, './content')
+
+    update_progress("Starting PDF conversion")
+    
+    process_directory(input_directory, output_directory)
+
+    update_progress("PDF conversion complete")
