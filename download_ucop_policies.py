@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -16,6 +17,8 @@ from shared import get_driver
 
 load_dotenv()  # This loads the environment variables from .env
 
+logger = logging.getLogger(__name__)
+
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
 ## UCOP Policies are on `https://policy.ucop.edu`
@@ -27,7 +30,7 @@ def download_pdf(url, directory, filename):
     path = os.path.join(directory, filename)
      # if we already have the file, skip it
     if os.path.exists(path):
-        print(f"Already have {filename}")
+        logger.info(f"Already have {filename}")
         return
     
     headers = {
@@ -46,7 +49,7 @@ def get_links(driver, url):
             EC.presence_of_element_located((By.ID, 'accordion'))
         )
     except Exception as e:
-        print(f"Error waiting for page to load: {e}")
+        logger.error(f"Error waiting for page to load: {e}")
         return None, None
     
     soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -136,7 +139,7 @@ def download_ucop(update_progress):
             progress_percentage = round(((i+1) / total_links) *  100,  2)
             update_progress(f"{progress_percentage:.2f}% - Downloading {title} from {url} as {pdf_filename} - {i+1} of {total_links}")
 
-        print(f"Downloading {title} from {url} as {pdf_filename}")
+        logger.info(f"Downloading {title} from {url} as {pdf_filename}")
         download_pdf(url, directory, pdf_filename)
 
     # create a JSON file with run details
