@@ -100,7 +100,7 @@ def sync_policies(update_progress):
         # Step 3: Update the Content
             
         # Step 3a: Convert the PDFs to Text
-        convert_pdfs(update_progress)
+        convert_pdfs(update_progress, output_directory=temp_dir)
 
         # Step 3b: Copy text files over
         ### TODO
