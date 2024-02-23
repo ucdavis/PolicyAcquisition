@@ -108,7 +108,8 @@ def sync_policies(update_progress):
         # Step 4: Commit and Push the Changes
         try:
             repo.git.add(A=True)
-            repo.index.commit("Automated commit message")
+            commit_message = "Policy Update " + datetime.now().strftime("%Y-%m-%d")
+            repo.index.commit(commit_message)
             repo.git.push(remote_name, branch_name)
             print("Changes have been pushed successfully.")
         except exc.GitCommandError as e:

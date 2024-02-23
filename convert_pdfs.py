@@ -10,7 +10,6 @@ load_dotenv()  # This loads the environment variables from .env
 
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
-
 def extract_text_from_image(input_path):
     images = convert_from_path(
         input_path, 300
