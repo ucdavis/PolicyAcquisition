@@ -3,8 +3,10 @@
 import logging
 import os
 import json
+import time
 from dotenv import load_dotenv
 import hashlib
+from elasticsearch import Elasticsearch
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
@@ -15,6 +17,8 @@ load_dotenv()  # Load environment variables
 
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
+logger = logging.getLogger(__name__)
+
 API_KEY = os.getenv("OPENAI_API_KEY")
 if not API_KEY:
     print("OpenAI API key is required")
@@ -24,9 +28,13 @@ if not API_KEY:
 ELASTIC_URL = os.getenv("ELASTIC_URL", "http://127.0.0.1:9200")
 ELASTIC_WRITE_USERNAME = os.getenv("ELASTIC_WRITE_USERNAME", "")
 ELASTIC_WRITE_PASSWORD = os.getenv("ELASTIC_WRITE_PASSWORD", "")
-ELASTIC_INDEX = os.getenv("ELASTIC_INDEX", "vectorstore")
+ELASTIC_INDEX = os.getenv("ELASTIC_INDEX", "policy_vectorstore_dev")
 
-logger = logging.getLogger(__name__)
+# Create our elastic client
+es_client = Elasticsearch(hosts=[ELASTIC_URL], basic_auth=(ELASTIC_WRITE_USERNAME, ELASTIC_WRITE_PASSWORD), max_retries=10, retry_on_timeout=True)
+
+# might want to play with `text-embedding-3-small` later
+embedding = OpenAIEmbeddings(model="text-embedding-3-large")
 
 # revisions are classified as "Resource" but we don't want to include them in the search
 ignoredClassifications = ["Resource"]
@@ -96,6 +104,7 @@ def process_folders(folders, update_progress):
         folders: A dictionary of folder names and paths.
         update_progress: A callback function to update the progress of the vectorization.
     """
+    real_index_name = "policy_vectorstore_" + str(int(time.time()))
 
     for folder_name, folder_path in folders.items():
         update_progress(f"Processing {folder_name}")
@@ -127,6 +136,9 @@ def process_folders(folders, update_progress):
             metadata = document.copy()
             metadata.pop("content")  # remove content from metadata
 
+            # add in scope
+            metadata["scope"] = folder_name
+
             langchain_document = Document(
                 page_content=document["content"], metadata=metadata
             )
@@ -144,7 +156,79 @@ def process_folders(folders, update_progress):
             f"Vectorizing and pushing to Elasticsearch {len(splitDocs)} documents in {folder_name}"
         )
 
-        # TODO
+        # split into chunks of 200
+        chunk_size = 200
+        for i in range(0, len(splitDocs), chunk_size):
+            update_progress(
+                f"Processing chunk {i} to {i+chunk_size} of {len(splitDocs)} in {folder_name}"
+            )
+            ElasticsearchStore.from_documents(
+                splitDocs[i : i + chunk_size],
+                embedding,
+                index_name=real_index_name,
+                es_connection=es_client,
+            )
+
+        update_progress(f"Finished processing {folder_name}")
+    
+    update_progress(f"Finished processing all folders. New index is {real_index_name}. Swapping aliases...")
+
+    create_and_update_alias(real_index_name)
+
+    update_progress(f"Alias updated to {real_index_name}")
+
+
+def create_and_update_alias(index_name):
+    """
+    We are going to swap the alias from the current index to the new index given by `index_name`
+
+    Args:
+        index_name: The name of the new index to swap to.
+    """
+
+    # Step 0: Assume the index is already created (since langchain does that for us)
+
+    # Create our elastic client
+
+    # Find all indexes the alias points to currently
+    alias_exists = es_client.indices.exists_alias(name=ELASTIC_INDEX)
+
+    # setup actions to perform
+    actions = []
+
+    actions.append(
+        {
+            "add": {
+                "index": index_name,
+                "alias": ELASTIC_INDEX,
+            }
+        }
+    )
+
+    indexes_to_remove = []
+
+    if alias_exists:
+        # Get all indexes the alias points to
+        indexes = es_client.indices.get_alias(name=ELASTIC_INDEX)
+
+        for index in indexes:
+            if index != index_name:
+                indexes_to_remove.append(index)
+            actions.append(
+                {
+                    "remove": {
+                        "index": index,
+                        "alias": ELASTIC_INDEX,
+                    }
+                }
+            )
+    
+    # Execute -- update the alias (remove from old indices and add to new index)
+    es_client.indices.update_aliases(body={"actions": actions})
+
+    # Delete the old indexes
+    for index in indexes_to_remove:
+        es_client.indices.delete(index=index)
 
 
 def vectorize(update_progress):
@@ -160,7 +244,7 @@ def vectorize(update_progress):
 
     process_folders(all_folders, update_progress)
 
-    # TODO: swap the newly built index with the prod one using aliases
+    update_progress("Finished vectorizing and pushing to Elasticsearch")
 
 
 ## TODO: call from API
