@@ -245,7 +245,3 @@ def vectorize(update_progress):
     process_folders(all_folders, update_progress)
 
     update_progress("Finished vectorizing and pushing to Elasticsearch")
-
-
-## TODO: call from API
-vectorize(lambda a: print(a))  # Start the vectorization process

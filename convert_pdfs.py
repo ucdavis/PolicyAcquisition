@@ -57,6 +57,12 @@ def process_directory(input_directory, output_directory, update_progress):
                 output_path = os.path.join(
                     output_directory, os.path.relpath(input_path, start=input_directory)
                 ).replace(".pdf", ".txt")
+
+                # if file already exists, skip it
+                if os.path.exists(output_path):
+                    logger.info(f"Already have {output_path}. Skipping.")
+                    continue
+
                 output_dir = os.path.dirname(output_path)
                 os.makedirs(output_dir, exist_ok=True)
                 extract_text_from_pdf(input_path, output_path)
