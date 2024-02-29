@@ -34,12 +34,12 @@ def clear_content_folder(directory):
         OSError: If there is an error deleting files.
     """
     try:
-        for filename in os.listdir(directory):
-            file_path = os.path.join(directory, filename)
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
+        for item in os.listdir(directory):
+            item_path = os.path.join(directory, item)
+            if os.path.isfile(item_path):
+                os.remove(item_path)
+            elif os.path.isdir(item_path) and item != ".git":
+                shutil.rmtree(item_path)
     except OSError as e:
         logger.error(f"Error deleting files: {e}")
         exit(1)
