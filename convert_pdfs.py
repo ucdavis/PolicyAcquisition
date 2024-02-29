@@ -70,7 +70,7 @@ def process_directory(input_directory, output_directory, update_progress):
                 os.makedirs(output_dir, exist_ok=True)
                 os.system(f"cp {input_path} {output_path}")
 
-            if file_counter % 50 == 0:
+            if file_counter % 25 == 0:
                 update_progress(f"Processed {file_counter} files")
 
 

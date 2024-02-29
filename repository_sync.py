@@ -7,11 +7,11 @@ from dotenv import load_dotenv
 from git import Repo, exc
 from datetime import datetime
 
-from convert_pdfs import convert_pdfs
-
 ### Used to sync the content folder to the https://github.com/ucdavis/policy repo
 
 load_dotenv()  # This loads the environment variables from .env
+
+file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +29,17 @@ remote_url = f"https://{github_token}:x-oauth-basic@github.com/{github_repo}.git
 
 def clear_content_folder(directory):
     """
-    Clears the content folder by deleting all files and subdirectories, except for the .git directory.
-
+    Clears the content folder by deleting all files and subdirectories
     Raises:
         OSError: If there is an error deleting files.
     """
     try:
-        for item in os.listdir(directory):
-            item_path = os.path.join(directory, item)
-            if os.path.isfile(item_path):
-                os.remove(item_path)
-            elif os.path.isdir(item_path) and item != ".git":
-                shutil.rmtree(item_path)
+        for filename in os.listdir(directory):
+            file_path = os.path.join(directory, filename)
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
     except OSError as e:
         logger.error(f"Error deleting files: {e}")
         exit(1)
@@ -50,9 +49,8 @@ def sync_policies(update_progress):
     Synchronizes the policies by performing the following steps:
     1. Initialize or Open the Repo & Ensure "[branch_name]" Branch
     2. Pull/Fetch to Update Local Data. Reset to Remote State
-    3. Update the Content
-        a. Convert the PDFs to Text
-        b. Copy text files over
+    3. Clear the Content Folder but leave the git history
+    4. Copy the new content to the folder
     4. Commit and Push the Changes
 
     Args:
@@ -97,18 +95,18 @@ def sync_policies(update_progress):
             logger.error(f"Error updating local branch: {e}")
             exit(1)
 
-        # Remove all files so we can replace with the new content
+        # Step 3: Remove all files so we can replace with the new content
         clear_content_folder(temp_dir)
 
-        # Step 3: Update the Content
+        # Step 4: Update the Content from the file_storage_path_base content directory
+        shutil.copytree(os.path.join(file_storage_path_base, "content"), temp_dir)
+
+        # Content should be updated at this point, let's double check that there are folders in here now
+        if not os.listdir(temp_dir):
+            logger.error("Content directory is empty. No changes to push.")
+            exit(1)
             
-        # Step 3a: Convert the PDFs to Text
-        convert_pdfs(update_progress, output_directory=temp_dir)
-
-        # Step 3b: Copy text files over
-        ### TODO
-
-        # Step 4: Commit and Push the Changes
+        # Step 5: Commit and Push the Changes
         try:
             repo.git.add(A=True)
             commit_message = "Policy Update " + datetime.now().strftime("%Y-%m-%d")
