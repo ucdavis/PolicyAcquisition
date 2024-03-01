@@ -10,17 +10,21 @@ from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
 from repository_sync import sync_policies
+from vectorize import vectorize
 
 load_dotenv()  # This loads the environment variables from .env
 
 ### Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 ### Setup API Key Security
 API_KEY = os.getenv("POLICY_API_KEY")
 API_KEY_NAME = "X-API-KEY"
 
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+
 
 async def get_api_key(api_key_header: str = Depends(api_key_header)):
     if api_key_header == API_KEY:
@@ -31,16 +35,19 @@ async def get_api_key(api_key_header: str = Depends(api_key_header)):
             detail="Invalid API Key",
         )
 
+
 app = FastAPI(dependencies=[Depends(get_api_key)])
 
 ### In-memory storage for task progress
 tasks_progress = {}
+
 
 def update_task_progress(task_id, progress_update):
     """Append progress update to the task's history."""
     if task_id not in tasks_progress:
         tasks_progress[task_id] = ""
     tasks_progress[task_id] += f"{progress_update}\n"
+
 
 ### Our download methods
 def long_running_download_ucop(task_id):
@@ -51,6 +58,7 @@ def long_running_download_ucop(task_id):
     download_ucop(update_progress)
     pass
 
+
 def long_running_download_ucd(task_id):
     def update_progress(progress):
         """Local function to update the task progress."""
@@ -59,6 +67,18 @@ def long_running_download_ucd(task_id):
     download_ucd(update_progress)
     pass
 
+
+def long_running_download_all(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    download_ucop(update_progress)
+    download_ucd(update_progress)
+    pass
+
+
+### Other long running methods
 def long_running_convert_pdfs(task_id):
     def update_progress(progress):
         """Local function to update the task progress."""
@@ -67,6 +87,7 @@ def long_running_convert_pdfs(task_id):
     convert_pdfs(update_progress)
     pass
 
+
 def long_running_sync_content(task_id):
     def update_progress(progress):
         """Local function to update the task progress."""
@@ -74,6 +95,16 @@ def long_running_sync_content(task_id):
 
     sync_policies(update_progress)
     pass
+
+
+def long_running_vectorize(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    vectorize(update_progress)
+    pass
+
 
 ### Our API Endpoints
 @app.post("/api/downloadUcop")
@@ -84,6 +115,7 @@ async def start_downloadUcop():
     thread.start()
     return {"message": "Download started successfully", "task_id": task_id}
 
+
 @app.post("/api/downloadUcd")
 async def start_downloadUcd():
     # Use threading to avoid blocking the execution
@@ -91,6 +123,16 @@ async def start_downloadUcd():
     thread = threading.Thread(target=long_running_download_ucd, args=(task_id,))
     thread.start()
     return {"message": "Download started successfully", "task_id": task_id}
+
+
+@app.post("/api/downloadAll")
+async def start_downloadAll():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=long_running_download_all, args=(task_id,))
+    thread.start()
+    return {"message": "Download started successfully", "task_id": task_id}
+
 
 @app.post("/api/convertPdfs")
 async def start_convertPdfs():
@@ -100,6 +142,7 @@ async def start_convertPdfs():
     thread.start()
     return {"message": "Conversion started successfully", "task_id": task_id}
 
+
 @app.post("/api/syncPolicies")
 async def start_sync_policies():
     # Use threading to avoid blocking the execution
@@ -107,6 +150,16 @@ async def start_sync_policies():
     thread = threading.Thread(target=long_running_sync_content, args=(task_id,))
     thread.start()
     return {"message": "Sync started successfully", "task_id": task_id}
+
+
+@app.post("/api/vectorize")
+async def start_vectorize():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=long_running_vectorize, args=(task_id,))
+    thread.start()
+    return {"message": "Vectorization started successfully", "task_id": task_id}
+
 
 ### Status Endpoint
 # This endpoint will return the history of the given task
@@ -118,10 +171,12 @@ async def get_task_progress(task_id: str):
         progress = "Task not found or completed"
     return {"task_id": task_id, "progress": progress}
 
+
 ### Health Check & Ancillary Endpoints
 @app.get("/")
 async def root():
     return {"message": "Welcome to the UCOP Policies Downloader!"}
+
 
 @app.get("/api/health")
 async def health():
