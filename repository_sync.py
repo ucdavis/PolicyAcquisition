@@ -27,6 +27,7 @@ if not github_token:
 github_repo = "ucdavis/policy"
 remote_url = f"https://{github_token}:x-oauth-basic@github.com/{github_repo}.git"
 
+
 def clear_content_folder(directory):
     """
     Clears the content folder by deleting all files and subdirectories
@@ -43,6 +44,7 @@ def clear_content_folder(directory):
     except OSError as e:
         logger.error(f"Error deleting files: {e}")
         exit(1)
+
 
 def sync_policies(update_progress):
     """
@@ -65,12 +67,14 @@ def sync_policies(update_progress):
     # first, create a temporary directory to store the content
     # Create a temporary directory using the context manager
     with tempfile.TemporaryDirectory() as temp_dir:
-        logger.info(f'Temporary directory: {temp_dir}')
+        logger.info(f"Temporary directory: {temp_dir}")
 
         # Step 1: Initialize the Repo & Ensure "[branch_name]" Branch
         try:
             # Clone the repo with depth 1 (shallow clone, no need to download the entire history)
             repo = Repo.clone_from(remote_url, temp_dir, depth=1)
+
+            update_progress("Repo cloned")
 
             # Ensure "main" branch is checked out
             if repo.active_branch.name != branch_name:
@@ -95,17 +99,25 @@ def sync_policies(update_progress):
             logger.error(f"Error updating local branch: {e}")
             exit(1)
 
+        update_progress("Local data fetched and reset to remote state.")
+
         # Step 3: Remove all files so we can replace with the new content
         clear_content_folder(temp_dir)
 
+        update_progress("Content folder cleared.")
+
         # Step 4: Update the Content from the file_storage_path_base content directory
         shutil.copytree(os.path.join(file_storage_path_base, "content"), temp_dir)
+
+        update_progress("text output copied to the content folder.")
 
         # Content should be updated at this point, let's double check that there are folders in here now
         if not os.listdir(temp_dir):
             logger.error("Content directory is empty. No changes to push.")
             exit(1)
-            
+
+        update_progress("Ready to commit and push.")
+
         # Step 5: Commit and Push the Changes
         try:
             repo.git.add(A=True)
@@ -113,6 +125,7 @@ def sync_policies(update_progress):
             repo.index.commit(commit_message)
             repo.git.push(remote_name, branch_name)
             logger.info("Changes have been pushed successfully.")
+            update_progress("Changes have been pushed successfully.")
         except exc.GitCommandError as e:
             logger.error(f"Error during commit/push: {e}")
             exit(1)
