@@ -31,6 +31,7 @@ remote_url = f"https://{github_token}:x-oauth-basic@github.com/{github_repo}.git
 def clear_content_folder(directory):
     """
     Clears the content folder by deleting all files and subdirectories
+    Leaves .git and the README file in place.
     Raises:
         OSError: If there is an error deleting files.
     """
@@ -38,15 +39,19 @@ def clear_content_folder(directory):
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
             if os.path.isfile(item_path):
-                os.remove(item_path)
+                # Don't delete the README file
+                if item != "README.md":
+                    os.remove(item_path)
             elif os.path.isdir(item_path) and item != ".git":
                 shutil.rmtree(item_path)
     except OSError as e:
         logger.error(f"Error deleting files: {e}")
         exit(1)
 
+
 import os
 import shutil
+
 
 def copy_content_to_existing_dir(src, dst):
     """
@@ -67,6 +72,17 @@ def copy_content_to_existing_dir(src, dst):
             shutil.copytree(s, d, dirs_exist_ok=True)
         else:
             shutil.copy2(s, d)
+
+
+def reset_file_storage_folder():
+    """
+    clear everything out of the file_storage_path_base directory.
+
+    Returns:
+        None
+    """
+    os.system(f"rm -rf {file_storage_path_base}/*")
+
 
 def sync_policies(update_progress):
     """
@@ -124,7 +140,9 @@ def sync_policies(update_progress):
         update_progress("Content folder cleared.")
 
         # Step 3: Update the Content from the file_storage_path_base content directory
-        copy_content_to_existing_dir(os.path.join(file_storage_path_base, "content"), temp_dir)
+        copy_content_to_existing_dir(
+            os.path.join(file_storage_path_base, "content"), temp_dir
+        )
 
         update_progress("text output copied to the content folder.")
 
@@ -148,6 +166,3 @@ def sync_policies(update_progress):
             exit(1)
 
         update_progress("Sync complete at " + datetime.now().isoformat())
-
-## TEMPORARY TESTING
-sync_policies(print)
