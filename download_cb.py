@@ -12,7 +12,6 @@ from shared import get_driver
 from result import Ok, Err, Result, is_ok, is_err
 
 # Test using python -m doctest -v download_cb.py
-
 load_dotenv()  # This loads the environment variables from .env
 logger = logging.getLogger(__name__)
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
@@ -28,7 +27,7 @@ def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
         filename: The name of the file to save
 
     Returns:
-       Result: Ok if the file was downloaded, Err if the file already exists
+       Result: Ok if the file was downloaded, Err if there was an error
 
     >>> download_pdf('https://ucnet.universityofcalifornia.edu/labor/bargaining-units/cx/docs/cx_2022-2026_00_complete.pdf', './output/docs/collective_bargaining_contracts', 'cx_2022-2026_00_complete.pdf')
     Err('Already have cx_2022-2026_00_complete.pdf')
@@ -47,6 +46,10 @@ def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
 
     with open(path, "wb") as file:
         file.write(response.content)
+
+    if not os.path.exists(path):
+        logger.error(f"Failed to download {filename}")
+        return Err(f"Failed to download {filename}")
 
     return Ok(f"Downloaded {filename}")
 
