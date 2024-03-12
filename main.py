@@ -9,7 +9,7 @@ from convert_pdfs import convert_pdfs
 from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
-from repository_sync import sync_policies
+from repository_sync import reset_file_storage_folder, sync_policies
 from vectorize import vectorize
 
 load_dotenv()  # This loads the environment variables from .env
@@ -159,6 +159,14 @@ async def start_vectorize():
     thread = threading.Thread(target=long_running_vectorize, args=(task_id,))
     thread.start()
     return {"message": "Vectorization started successfully", "task_id": task_id}
+
+
+@app.post("/api/clearContent")
+async def clear_content():
+    # just clear the content folder, no need to thread
+    reset_file_storage_folder()
+
+    return {"message": "Content folder cleared successfully"}
 
 
 ### Status Endpoint
