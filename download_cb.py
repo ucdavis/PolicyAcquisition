@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import requests
 import json
 import os
+from policy_details import PolicyDetails
 from shared import get_driver
 from result import Ok, Err, Result, is_ok, is_err
 
@@ -15,11 +16,12 @@ from result import Ok, Err, Result, is_ok, is_err
 load_dotenv()  # This loads the environment variables from .env
 logger = logging.getLogger(__name__)
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
-user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-base_url = "https://ucnet.universityofcalifornia.edu/labor" # Collective Bargaining Contracts
+
+base_url = "https://ucnet.universityofcalifornia.edu/labor/bargaining-units"  # Collective Bargaining Contracts
+
 
 def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
-    """ Download PDF files from the web
+    """Download PDF files from the web
 
     Args:
         url: URL of the file to download
@@ -32,8 +34,7 @@ def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
     >>> download_pdf('https://ucnet.universityofcalifornia.edu/labor/bargaining-units/cx/docs/cx_2022-2026_00_complete.pdf', './output/docs/collective_bargaining_contracts', 'cx_2022-2026_00_complete.pdf')
     Err('Already have cx_2022-2026_00_complete.pdf')
     """
-    headers = { "User-Agent": user_agent}
-    response = requests.get(url, headers=headers, allow_redirects=True)
+    response = requests.get(url, allow_redirects=True)
 
     # Create the folder if it doesn't exist
     os.makedirs(directory, exist_ok=True)
@@ -53,29 +54,18 @@ def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
 
     return Ok(f"Downloaded {filename}")
 
-def get_pdf_links_from_page(url: str) -> list[str]:
-    """Get the PDF links on a page
-
-    >>> get_pdf_links_from_page('https://ucnet.universityofcalifornia.edu/labor/bargaining-units/cx/contract.html')
-    ['docs/cx_2022-2026_00_complete.pdf']
-    """
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    pdf_links = [a['href'] for a in soup.find_all('a') if a['href'].endswith('.pdf')]
-
-    return pdf_links
 
 def crawl_links(start_url: str, depth=3) -> set[str]:
     """Crawl a website and return all the links
-    
+        Crawling is limited to our `base_url`
+
     Args:
         start_url: The URL to start crawling from
         depth: The depth of links to crawl
 
     Returns:
         set: A set of all the links found
-        
+
     >>> result = crawl_links('https://ucnet.universityofcalifornia.edu/labor/bargaining-units/cx/contract.html', 0)
     Using remote driver
     >>> len(result) > 0
@@ -90,14 +80,23 @@ def crawl_links(start_url: str, depth=3) -> set[str]:
         if url in visited_links or current_depth > depth:
             continue
 
+        # only visit links on our base_url
+        if not url.startswith(base_url):
+            continue
+
         visited_links.add(url)
 
+        # if we are looking at a PDF, skip it after adding it to the visited links
+        if url.endswith(".pdf"):
+            continue
+
+        # Visit the page and get all the links
         try:
             driver.get(url)
-            links = driver.find_elements(By.TAG_NAME, 'a')
+            links = driver.find_elements(By.TAG_NAME, "a")
 
             for link in links:
-                href = link.get_attribute('href')
+                href = link.get_attribute("href")
                 if href and href not in visited_links:
                     links_to_visit.append((href, current_depth + 1))
 
@@ -108,47 +107,79 @@ def crawl_links(start_url: str, depth=3) -> set[str]:
 
     return visited_links
 
+
 def download_cb(update_progress):
-    """ Download the collective bargaining contracts from UCOP
+    """Download the collective bargaining contracts from UCOP
+        Crawls the barganing contracts page and downloads all the PDFs
+        Future: perhaps save non-PDFs like FAQ and other pages as HTML/text?
+                : map 2-character codes to full names
 
     Args:
         update_progress (_type_): A function to update the progress bar
     """
-    # driver = get_driver()
-
     update_progress("Downloading the collective bargaining contracts...")
 
     # pull a list of all policies
-    home_url = f'{base_url}/index.html'
+    home_url = f"{base_url}/index.html"
 
-    links_to_visit = crawl_links(home_url, 2)
-    pdf_links = set()
+    all_links = crawl_links(home_url, 3)
 
-    # Get the PDF links from each page
-    for link in links_to_visit:
-        pdf_links.append(get_pdf_links_from_page(link))
+    # get just the links that are PDFs
+    pdf_links = [link for link in all_links if link.endswith(".pdf")]
+
+    # transform policy links to a list of PolicyDetails
+    # we really just know url and we'll pull title from filename.  would be nice to get more metadata later. maybe via AI?
+    policy_details = [
+        PolicyDetails(title=os.path.splitext(os.path.basename(link))[0], url=link)
+        for link in pdf_links
+    ]
 
     # Create a directory to save the PDFs
-    directory = os.path.join(file_storage_path_base, './docs/collective_bargaining_contracts')
+    directory = os.path.join(
+        file_storage_path_base, "./docs/collective_bargaining_contracts"
+    )
     os.makedirs(directory, exist_ok=True)
 
-    # Save the list of policies with other metadata to a JSON file
-    contract_details_json = os.path.join(directory, 'metadata.json')
+    # save the list of policies with other metadata to a JSON file for later
+    policy_details_json = os.path.join(directory, "metadata.json")
 
-    with open(os.path.join(directory, 'metadata.json'), 'w') as f:
-        json.dump(pdf_links, f, indent=4)
+    # delete the file if it exists
+    try:
+        os.remove(policy_details_json)
+    except OSError:
+        pass
 
-    for link in pdf_links:
-        download_pdf(link, directory, os.path.basename(link))
+    with open(os.path.join(directory, "metadata.json"), "w") as f:
+        json.dump([policy.__dict__ for policy in policy_details], f, indent=4)
 
-    total_links = len(pdf_links)
+    # Download the PDFs
+    for i, link_info in enumerate(policy_details):
+        url = link_info.url
+        title = link_info.title
+        pdf_filename = f"{link_info.filename}.pdf"
 
-    # Create a JSON file with run details
-    with open(os.path.join(directory, 'run_details.json'), 'w') as f:
+        # update progress every 20 PDFs
+        if (i + 1) % 20 == 0:
+            update_progress(
+                f"Downloading {title} from {url} as {pdf_filename} - {i+1} of {len(policy_details)}"
+            )
+
+        download_pdf(url, directory, pdf_filename)
+
+    # create a JSON file with run details
+    with open(os.path.join(directory, "run_details.json"), "w") as f:
         completed_date = datetime.now().isoformat()
-        json.dump({"total_contracts": total_links, "status": "completed", "completed_date": completed_date}, f, indent=4)
+        json.dump(
+            {
+                "total_policies": len(policy_details),
+                "status": "completed",
+                "completed_date": completed_date,
+            },
+            f,
+            indent=4,
+        )
 
-    update_progress("Finished downloading the collective bargaining contracts")
+    update_progress("Finished UCNET Collective Bargaining download process")
 
 # if __name__ == "__main__":
 #     import doctest
