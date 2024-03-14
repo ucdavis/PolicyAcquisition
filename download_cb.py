@@ -19,6 +19,47 @@ file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
 base_url = "https://ucnet.universityofcalifornia.edu/labor/bargaining-units"  # Collective Bargaining Contracts
 
+# 2-character codes to full names
+# from https://ucnet.universityofcalifornia.edu/labor/bargaining-units/index.html
+# might want to get this from the page itself, static for now
+cb_union_dict = {
+    "bx": "Academic Student Employees",
+    "cx": "Clerical & Allied Services",
+    "br": "Graduate Student Researchers",
+    "hx": "Health Care Professionals",
+    "ix": "Non-Senate Instructional (Lecturers)",
+    "ex": "Patient Care Technical",
+    "dx": "Physicians, Dentists and Podiatrists",
+    "pa": "Police Officers",
+    "px": "Postdoctoral Scholars",
+    "lx": "Professional Librarians",
+    "nx": "Registered Nurses",
+    "rx": "Research Support Professionals",
+    "sx": "Service",
+    "tx": "Technical",
+    "kb": "Skilled Craft",
+    "gs": "Printing Trades",
+    "k3": "Skilled Craft",
+    "f3": "Local 4920",
+    "m3": "Medical Residents",
+    "k9": "Skilled Craft",
+    "m9": "Medical Residents",
+    "k4": "Skilled Craft",
+    "m4": "Medical Residents",
+    "km": "Skilled Craft",
+    "k5": "Skilled Craft",
+    "m5": "Medical Resident",
+    "k8": "Skilled Craft",
+    "k7": "Skilled Craft",
+    "a7": "SCFA",
+    "b6": "Marine Crew",
+    "k6": "Skilled Craft",
+    "m6": "SDHSA",
+    "k2": "Skilled Craft",
+    "m2": "House Staff",
+    "mf": "Medical Resident",
+}
+
 
 def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
     """Download PDF files from the web
@@ -108,6 +149,35 @@ def crawl_links(start_url: str, depth=3) -> set[str]:
     return visited_links
 
 
+def get_policy_details(url: str) -> PolicyDetails:
+    """Get the details of a policy from a URL
+
+    Args:
+        url: The URL of the policy
+
+    Returns:
+        Result: title is url ending w/o the extension
+
+    """
+
+    policy_details = PolicyDetails(
+        title=os.path.splitext(os.path.basename(url))[0], url=url
+    )
+
+    # if title starts with two characters and an underscore, try to look up the full name in `cb_union_dict`
+    code = policy_details.title[0:2].lower()
+
+    if code in cb_union_dict and policy_details.title[2:3] == "_":
+        # replace the code with the full name in titles
+        policy_details.title = (
+            cb_union_dict[code].replace(" ", "_") + policy_details.title[2:]
+        )
+        policy_details.keywords = [cb_union_dict[code]]
+        policy_details.subject_areas = [cb_union_dict[code], "Collective Bargaining"]
+
+    return policy_details
+
+
 def download_cb(update_progress):
     """Download the collective bargaining contracts from UCOP
         Crawls the barganing contracts page and downloads all the PDFs
@@ -128,11 +198,7 @@ def download_cb(update_progress):
     pdf_links = [link for link in all_links if link.endswith(".pdf")]
 
     # transform policy links to a list of PolicyDetails
-    # we really just know url and we'll pull title from filename.  would be nice to get more metadata later. maybe via AI?
-    policy_details = [
-        PolicyDetails(title=os.path.splitext(os.path.basename(link))[0], url=link)
-        for link in pdf_links
-    ]
+    policy_details = [get_policy_details(link) for link in pdf_links]
 
     # Create a directory to save the PDFs
     directory = os.path.join(
@@ -141,15 +207,15 @@ def download_cb(update_progress):
     os.makedirs(directory, exist_ok=True)
 
     # save the list of policies with other metadata to a JSON file for later
-    policy_details_json = os.path.join(directory, "metadata.json")
+    policy_details_json_path = os.path.join(directory, "metadata.json")
 
     # delete the file if it exists
     try:
-        os.remove(policy_details_json)
+        os.remove(policy_details_json_path)
     except OSError:
         pass
 
-    with open(os.path.join(directory, "metadata.json"), "w") as f:
+    with open(policy_details_json_path, "w") as f:
         json.dump([policy.__dict__ for policy in policy_details], f, indent=4)
 
     # Download the PDFs
@@ -181,8 +247,7 @@ def download_cb(update_progress):
 
     update_progress("Finished UCNET Collective Bargaining download process")
 
+
 # if __name__ == "__main__":
 #     import doctest
 #     doctest.testmod()
-
-download_cb(lambda x: print(x))
