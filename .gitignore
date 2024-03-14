@@ -8,3 +8,6 @@ output/
 
 __pycache__/
 .env
+
+.vscode/
+**frontmatter*

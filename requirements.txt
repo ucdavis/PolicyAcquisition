@@ -14,3 +14,4 @@ langchain===0.1.9
 langchain-elasticsearch==0.1.0
 langchain-openai==0.0.8
 tiktoken==0.6.0
+result==0.16.1

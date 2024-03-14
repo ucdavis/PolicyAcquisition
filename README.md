@@ -6,8 +6,8 @@ Welcome to **PolicyAcquisition**, a simple API in front of a set of Python scrip
 - **Simple API**: PolicyAcquisition provides a simple API to download and convert University policies into text format, making it easy to integrate into your existing systems.
 - **Automated Downloads**: Use `/api/downloadUcop` and `/api/downloadUcd` to automatically download policy PDFs from the UC Davis and University of California Office of the President (UCOP) websites.
 - **Smart Conversion**: The `/api/convertPdfs` endpoint transforms PDF documents into text, ready for analysis or archiving. It includes OCR capabilities for scanned documents, ensuring that even image-based PDFs are converted accurately. This is intended to be used with `/api/syncPolicies`.
--- **Sync Policies to GitHub**: The `/api/syncPolicies` endpoint uses the conversion system to create or copy text versions of all downloads, and then syncs the downloaded policies to a GitHub repository, ensuring that your policy library is always up-to-date and accessible.
--- **Status Checks**: Use the `/api/status/[ID]` endpoint to check the status of the system, ensuring that everything is running smoothly.
+- **Sync Policies to GitHub**: The `/api/syncPolicies` endpoint uses the conversion system to create or copy text versions of all downloads, and then syncs the downloaded policies to a GitHub repository, ensuring that your policy library is always up-to-date and accessible.
+- **Status Checks**: Use the `/api/status/[ID]` endpoint to check the status of the system, ensuring that everything is running smoothly.
 
 ## Features:
 - **Ease of Use**: Designed with simplicity in mind, these scripts require minimal setup and can be initiated with a few commands.

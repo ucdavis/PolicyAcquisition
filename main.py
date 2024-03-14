@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import APIKeyHeader
 import threading
 from convert_pdfs import convert_pdfs
+from download_cb import download_cb
 from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
@@ -67,6 +68,13 @@ def long_running_download_ucd(task_id):
     download_ucd(update_progress)
     pass
 
+def long_running_download_cb(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    download_cb(update_progress)
+    pass
 
 def long_running_download_all(task_id):
     def update_progress(progress):
@@ -75,6 +83,7 @@ def long_running_download_all(task_id):
 
     download_ucop(update_progress)
     download_ucd(update_progress)
+    download_cb(update_progress)
     pass
 
 
@@ -124,6 +133,13 @@ async def start_downloadUcd():
     thread.start()
     return {"message": "Download started successfully", "task_id": task_id}
 
+@app.post("/api/downloadCb")
+async def start_downloadCb():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=long_running_download_cb, args=(task_id,))
+    thread.start()
+    return {"message": "Download started successfully", "task_id": task_id}
 
 @app.post("/api/downloadAll")
 async def start_downloadAll():
