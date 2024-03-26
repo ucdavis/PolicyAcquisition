@@ -7,11 +7,13 @@ import time
 from dotenv import load_dotenv
 import hashlib
 from elasticsearch import Elasticsearch
+from typing import List
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_elasticsearch import ElasticsearchStore
 from langchain_openai import OpenAIEmbeddings
+from langchain_core.embeddings import Embeddings
 
 load_dotenv()  # Load environment variables
 
@@ -165,18 +167,8 @@ def process_folders(folders, update_progress):
             f"Vectorizing and pushing to Elasticsearch {len(splitDocs)} documents in {folder_name}"
         )
 
-        # split into chunks of 200
+        # split into chunks of 200 to avoid memory and timeout issues with elastic
         chunk_size = 200
-        for i in range(0, len(splitDocs), chunk_size):
-            update_progress(
-                f"Processing chunk {i} to {i+chunk_size} of {len(splitDocs)} in {folder_name}"
-            )
-            ElasticsearchStore.from_documents(
-                splitDocs[i : i + chunk_size],
-                embedding,
-                index_name=real_index_name,
-                es_connection=es_client,
-            )
 
         # push full text to separate index
         for i in range(0, len(documents_to_index), chunk_size):
@@ -185,8 +177,19 @@ def process_folders(folders, update_progress):
             )
             ElasticsearchStore.from_documents(
                 documents_to_index[i : i + chunk_size],
-                embedding=None,  # don't create embeddings for full text
+                embedding=PlaceholderEmbeddings(),  # don't create embeddings for full text
                 index_name=real_full_text_index_name,
+                es_connection=es_client,
+            )
+
+        for i in range(0, len(splitDocs), chunk_size):
+            update_progress(
+                f"Processing chunk {i} to {i+chunk_size} of {len(splitDocs)} in {folder_name}"
+            )
+            ElasticsearchStore.from_documents(
+                splitDocs[i : i + chunk_size],
+                embedding,
+                index_name=real_index_name,
                 es_connection=es_client,
             )
 
@@ -200,6 +203,7 @@ def process_folders(folders, update_progress):
     create_and_update_alias(real_full_text_index_name, ELASTIC_INDEX_FULLTEXT)
 
     update_progress(f"Alias updated to {real_index_name}")
+    update_progress(f"Alias updated to {real_full_text_index_name}")
 
 
 def create_and_update_alias(index_name, alias_name):
@@ -255,6 +259,24 @@ def create_and_update_alias(index_name, alias_name):
         es_client.indices.delete(index=index)
 
 
+# we don't want embeddings for full text, so we'll use a placeholder function
+# kind of a hack - probably better to just manually create the index and store the full text, but this is easier for now
+class PlaceholderEmbeddings(Embeddings):
+    """Implementation of Embeddings that returns placeholder vectors."""
+
+    def __init__(self, dims_length: int = 4):
+        self.dims_length = dims_length
+        # Ensure at least one dimension has a small non-zero value to avoid zero-magnitude vector
+        self.placeholder_vector = [0.0] * self.dims_length
+        self.placeholder_vector[0] = 0.01  # Setting a small non-zero value
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self.placeholder_vector for _ in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self.placeholder_vector
+
+
 def vectorize(update_progress):
     """
     Vectorizes the text files in the content folder and pushes them to Elasticsearch
@@ -266,6 +288,13 @@ def vectorize(update_progress):
 
     update_progress(f"Found {len(all_folders)} folders")
 
+    if len(all_folders) == 0:
+        update_progress("No folders found. Exiting.")
+        return
+
     process_folders(all_folders, update_progress)
 
     update_progress("Finished vectorizing and pushing to Elasticsearch")
+
+
+vectorize(print)
