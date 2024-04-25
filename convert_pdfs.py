@@ -97,3 +97,6 @@ def convert_pdfs(update_progress, input_directory=None, output_directory=None):
     process_directory(input_directory, output_directory, update_progress)
 
     update_progress("PDF conversion complete")
+
+if __name__ == "__main__":
+    convert_pdfs(print)

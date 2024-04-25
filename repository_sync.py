@@ -166,3 +166,6 @@ def sync_policies(update_progress):
             exit(1)
 
         update_progress("Sync complete at " + datetime.now().isoformat())
+
+if __name__ == "__main__":
+    sync_policies(print)
