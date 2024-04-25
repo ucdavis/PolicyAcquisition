@@ -70,6 +70,11 @@ def get_apm_links(driver, url):
     for link in links:
         href = link.get("href")
         title = link.get_text().strip()
+
+        # skip if no href or title
+        if not href or not title:
+            continue
+
         if href and href.endswith(".pdf"):
             logger.info(f"Found PDF link: {href}")
             # we don't have much info here
@@ -82,6 +87,8 @@ def get_apm_links(driver, url):
 def download_apm(driver, update_progress):
     # table of contents
     apm_url = urljoin(base_url, "apm/apm-toc")
+
+    update_progress("Starting APM download process...")
 
     policy_link_info_list = get_apm_links(driver, apm_url)
 
@@ -138,6 +145,8 @@ def download_apm(driver, update_progress):
             indent=4,
         )
 
+    update_progress("Complete: academic affairs download process")
+
 
 #### Main function
 #### This will read all of the policies, store their URLs in metadata.json, and then store each in a file
@@ -146,9 +155,9 @@ def download_academic_affairs(update_progress):
     """Download all UCOP policies and save them to the file storage path."""
     driver = get_driver()
 
-    update_progress("Starting AA download process...")
+    update_progress("Starting academic affairs download process...")
 
-    download_apm(driver)
+    download_apm(driver, update_progress)
 
 
 if __name__ == "__main__":
