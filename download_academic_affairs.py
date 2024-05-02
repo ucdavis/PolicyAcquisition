@@ -55,9 +55,7 @@ def get_apm_links(driver, url):
         )
     except Exception as e:
         logger.error(f"Error waiting for page to load: {e}")
-        return None, None
-
-    pass
+        raise  # re-raise the exception
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
 
