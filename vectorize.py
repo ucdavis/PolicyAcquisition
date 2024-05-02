@@ -297,4 +297,5 @@ def vectorize(update_progress):
     update_progress("Finished vectorizing and pushing to Elasticsearch")
 
 
-vectorize(print)
+if __name__ == "__main__":
+    vectorize(print)
