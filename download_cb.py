@@ -172,8 +172,12 @@ def get_policy_details(url: str) -> PolicyDetails:
         policy_details.title = (
             cb_union_dict[code].replace(" ", "_") + policy_details.title[2:]
         )
-        policy_details.keywords = [cb_union_dict[code]]
-        policy_details.subject_areas = [cb_union_dict[code], "Collective Bargaining"]
+        policy_details.keywords = [cb_union_dict[code], code]
+        policy_details.subject_areas = [
+            cb_union_dict[code],
+            code,
+            "Collective Bargaining",
+        ]
 
     return policy_details
 
