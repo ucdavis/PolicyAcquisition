@@ -94,7 +94,9 @@ def download_apm(driver, update_progress):
 
     #### TODO: this code is similar to other download functions, should be refactored
     # create a directory to save the pdfs
-    directory = os.path.join(file_storage_path_base, "./docs/ucd/academicaffairs/apm")
+    directory = os.path.join(
+        file_storage_path_base, "./docs/ucd/academicaffairs/ucdapm"
+    )
     os.makedirs(directory, exist_ok=True)
 
     # save the list of policies with other metadata to a JSON file for later
