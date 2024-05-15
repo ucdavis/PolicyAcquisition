@@ -3,8 +3,10 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import StaleElementReferenceException
 import requests
 import json
 import os
@@ -17,48 +19,7 @@ load_dotenv()  # This loads the environment variables from .env
 logger = logging.getLogger(__name__)
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
-base_url = "https://ucnet.universityofcalifornia.edu/labor/bargaining-units"  # Collective Bargaining Contracts
-
-# 2-character codes to full names
-# from https://ucnet.universityofcalifornia.edu/labor/bargaining-units/index.html
-# might want to get this from the page itself, static for now
-cb_union_dict = {
-    "bx": "Academic Student Employees",
-    "cx": "Clerical & Allied Services",
-    "br": "Graduate Student Researchers",
-    "hx": "Health Care Professionals",
-    "ix": "Non-Senate Instructional (Lecturers)",
-    "ex": "Patient Care Technical",
-    "dx": "Physicians, Dentists and Podiatrists",
-    "pa": "Police Officers",
-    "px": "Postdoctoral Scholars",
-    "lx": "Professional Librarians",
-    "nx": "Registered Nurses",
-    "rx": "Research Support Professionals",
-    "sx": "Service",
-    "tx": "Technical",
-    "kb": "Skilled Craft",
-    "gs": "Printing Trades",
-    "k3": "Skilled Craft",
-    "f3": "Local 4920",
-    "m3": "Medical Residents",
-    "k9": "Skilled Craft",
-    "m9": "Medical Residents",
-    "k4": "Skilled Craft",
-    "m4": "Medical Residents",
-    "km": "Skilled Craft",
-    "k5": "Skilled Craft",
-    "m5": "Medical Resident",
-    "k8": "Skilled Craft",
-    "k7": "Skilled Craft",
-    "a7": "SCFA",
-    "b6": "Marine Crew",
-    "k6": "Skilled Craft",
-    "m6": "SDHSA",
-    "k2": "Skilled Craft",
-    "m2": "House Staff",
-    "mf": "Medical Resident",
-}
+base_url = "https://ucnet.universityofcalifornia.edu/resources/employment-policies-contracts/bargaining-units/"  # Collective Bargaining Contracts
 
 
 def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
@@ -96,97 +57,118 @@ def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
     return Ok(f"Downloaded {filename}")
 
 
-def crawl_links(start_url: str, depth=3) -> set[str]:
-    """Crawl a website and return all the links
-        Crawling is limited to our `base_url`
+class UnionDetail:
+    def __init__(self, name: str, code: str, url: str):
+        self.name = name
+        self.code = code
+        self.url = url
 
-    Args:
-        start_url: The URL to start crawling from
-        depth: The depth of links to crawl
+    def __repr__(self):
+        return f"UnionDetail(name={self.name}, code={self.code}, url={self.url})"
 
-    Returns:
-        set: A set of all the links found
 
-    >>> result = crawl_links('https://ucnet.universityofcalifornia.edu/labor/bargaining-units/cx/contract.html', 0)
-    Using remote driver
-    >>> len(result) > 0
-    True
-    """
+def get_unions(url: str) -> list[UnionDetail]:
+    # Get the list of unions from the UCOP website
+    # Union links will look like this:
+    # <a href="/resources/employment-policies-contracts/bargaining-units/skilled-craft-davis/">Skilled Craft&nbsp;—&nbsp;K3<br></a>
+    # pull out name (Skilled Craft), code (K3), and link (/resources/employment-policies-contracts/bargaining-units/skilled-craft-davis/
     driver = get_driver()
-    visited_links = set()
-    links_to_visit = [(start_url, 0)]
+    driver.get(url)
 
-    while links_to_visit:
-        url, current_depth = links_to_visit.pop(0)
-        if url in visited_links or current_depth > depth:
-            continue
+    try:
+        # Wait for the page to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "local"))
+        )
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "systemwide"))
+        )
+    except Exception as e:
+        logger.error(f"Error waiting for page to load: {e}")
+        return None, None
 
-        # only visit links on our base_url
-        if not url.startswith(base_url):
-            continue
+    soup = BeautifulSoup(driver.page_source, "html.parser")
 
-        visited_links.add(url)
+    union_details = []
 
-        # if we are looking at a PDF, skip it after adding it to the visited links
-        if url.endswith(".pdf"):
-            continue
+    # Finding all the relevant links
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
+        full_text = ""
 
-        # Visit the page and get all the links
-        try:
-            driver.get(url)
-            links = driver.find_elements(By.TAG_NAME, "a")
+        # Check if anchor tag has nested spans
+        span_tags = a_tag.find_all("span")
+        if span_tags:
+            # Assuming the first span tag contains the required text
+            full_text = span_tags[0].get_text(strip=True)
+        else:
+            # Directly get the text inside the anchor tag
+            full_text = a_tag.get_text(strip=True)
 
-            for link in links:
-                href = link.get_attribute("href")
-                if href and href not in visited_links:
-                    links_to_visit.append((href, current_depth + 1))
-
-        except StaleElementReferenceException:
-            pass
+        if "—" in full_text:
+            name, code = full_text.split("—")
+            name = name.strip()
+            code = code.strip()
+            union_detail = UnionDetail(name=name, code=code, url=href)
+            union_details.append(union_detail)
 
     driver.quit()
+    return union_details
 
-    return visited_links
 
+def get_union_contracts(unions: list[UnionDetail]) -> list[PolicyDetails]:
+    # each union url has `/contract/` endpoint which lists all pdfs of contract for that union
+    # for each union, get the list of contracts as PolicyDetails objects
+    driver = get_driver()
 
-def get_policy_details(url: str) -> PolicyDetails:
-    """Get the details of a policy from a URL
+    policy_details_list: list[PolicyDetails] = []
 
-    Args:
-        url: The URL of the policy
+    for union in unions:
+        url = union.url
+        contract_url = f"{url}/contract/"
 
-    Returns:
-        Result: title is url ending w/o the extension
+        driver.get(contract_url)
 
-    """
+        try:
+            # Wait for contract detail page to load
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "content-detail__content"))
+            )
+        except Exception as e:
+            logger.error(f"Error waiting for page to load: {e}")
+            return None, None
 
-    policy_details = PolicyDetails(
-        title=os.path.splitext(os.path.basename(url))[0], url=url
-    )
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        content_detail = soup.find(id="content-detail__content")
 
-    # if title starts with two characters and an underscore, try to look up the full name in `cb_union_dict`
-    code = policy_details.title[0:2].lower()
+        # find all PDF links within the content-detail__content div
+        # links will look like this: <a href="https://ucnet.universityofcalifornia.edu/labor/bargaining-units/ra/docs/ra_00_2022-ta_agreement.pdf">Academic Researchers Tentative Agreement, effective 12-9-2022</a>
+        if content_detail:
+            # Finding all 'a' tags within this section
+            for a_tag in content_detail.find_all("a", href=True):
+                href = a_tag["href"]
 
-    if code in cb_union_dict and policy_details.title[2:3] == "_":
-        # replace the code with the full name in titles
-        policy_details.title = (
-            cb_union_dict[code].replace(" ", "_") + policy_details.title[2:]
-        )
-        policy_details.keywords = [cb_union_dict[code], code]
-        policy_details.subject_areas = [
-            cb_union_dict[code],
-            code,
-            "Collective Bargaining",
-        ]
+                # Filtering PDF links
+                if href.endswith(".pdf"):
+                    # Extracting the title from the href
+                    title = href.split("/")[-1].replace(".pdf", "")
 
-    return policy_details
+                    # Create PolicyDetails instance and append to the list
+                    policy_detail = PolicyDetails(
+                        title=title,
+                        url=href,
+                        keywords=[union.code, union.name],
+                        subject_areas=["Collective Bargaining"],
+                    )
+                    policy_details_list.append(policy_detail)
+
+    driver.quit()
+    return policy_details_list
 
 
 def download_cb(update_progress):
     """Download the collective bargaining contracts from UCOP
-        Crawls the barganing contracts page and downloads all the PDFs
-        Future: perhaps save non-PDFs like FAQ and other pages as HTML/text?
-                : map 2-character codes to full names
+    Crawls the barganing contracts pages and downloads all the PDFs
 
     Args:
         update_progress (_type_): A function to update the progress bar
@@ -194,15 +176,16 @@ def download_cb(update_progress):
     update_progress("Downloading the collective bargaining contracts...")
 
     # pull a list of all policies
-    home_url = f"{base_url}/index.html"
+    home_url = f"{base_url}"
 
-    all_links = crawl_links(home_url, 3)
+    unions = get_unions(home_url)
 
-    # get just the links that are PDFs
-    pdf_links = [link for link in all_links if link.endswith(".pdf")]
+    update_progress(f"Found {len(unions)} unions")
 
-    # transform policy links to a list of PolicyDetails
-    policy_details = [get_policy_details(link) for link in pdf_links]
+    ### For testing purposes, only get the first 3 unions
+    policy_details = get_union_contracts(unions[0:3])
+
+    update_progress(f"Found {len(policy_details)} policies")
 
     # Create a directory to save the PDFs
     directory = os.path.join(
@@ -252,6 +235,5 @@ def download_cb(update_progress):
     update_progress("Finished UCNET Collective Bargaining download process")
 
 
-# if __name__ == "__main__":
-#     import doctest
-#     doctest.testmod()
+if __name__ == "__main__":
+    download_cb(print)
