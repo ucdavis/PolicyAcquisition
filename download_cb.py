@@ -6,10 +6,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import StaleElementReferenceException
 import requests
 import json
-import os
 from policy_details import PolicyDetails
 from shared import get_driver
 from result import Ok, Err, Result, is_ok, is_err
@@ -183,7 +181,7 @@ def download_cb(update_progress):
     update_progress(f"Found {len(unions)} unions")
 
     ### For testing purposes, only get the first 3 unions
-    policy_details = get_union_contracts(unions[0:3])
+    policy_details = get_union_contracts(unions)
 
     update_progress(f"Found {len(policy_details)} policies")
 
