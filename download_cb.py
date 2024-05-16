@@ -83,7 +83,8 @@ def get_unions(url: str) -> list[UnionDetail]:
         )
     except Exception as e:
         logger.error(f"Error waiting for page to load: {e}")
-        return None, None
+        driver.quit()
+        return []
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
 
@@ -134,7 +135,8 @@ def get_union_contracts(unions: list[UnionDetail]) -> list[PolicyDetails]:
             )
         except Exception as e:
             logger.error(f"Error waiting for page to load: {e}")
-            return None, None
+            driver.quit()
+            return []
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
         content_detail = soup.find(id="content-detail__content")
