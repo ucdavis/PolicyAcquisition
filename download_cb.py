@@ -286,6 +286,8 @@ def download_cb(update_progress):
     # all policies are now in the policy_details list
     update_progress(f"Found {len(policy_details)} policies")
 
+    driver.quit()  # done with the browser
+
     # Create a directory to save the PDFs
     directory = os.path.join(
         file_storage_path_base, "./docs/collective_bargaining_contracts"
