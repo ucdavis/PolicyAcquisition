@@ -50,7 +50,7 @@ pytesseract==0.3.10
 python-dotenv==1.0.1
 PyYAML==6.0.1
 regex==2024.4.28
-requests==2.31.0
+requests==2.32.0
 result==0.16.1
 selenium==4.20.0
 smmap==5.0.1
