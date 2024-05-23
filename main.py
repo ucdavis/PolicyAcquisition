@@ -8,6 +8,7 @@ import threading
 from convert_pdfs import convert_pdfs
 from download_academic_affairs import download_academic_affairs
 from download_cb import download_cb
+from download_ucd_kb import download_ucd_kb
 from download_ucd_policies import download_ucd
 
 from download_ucop_policies import download_ucop
@@ -88,6 +89,15 @@ def long_running_download_academic_affairs(task_id):
     pass
 
 
+def long_running_download_knowledge_base(task_id):
+    def update_progress(progress):
+        """Local function to update the task progress."""
+        update_task_progress(task_id, progress)
+
+    download_ucd_kb(update_progress)
+    pass
+
+
 def long_running_download_all(task_id):
     def update_progress(progress):
         """Local function to update the task progress."""
@@ -97,6 +107,7 @@ def long_running_download_all(task_id):
     download_ucd(update_progress)
     download_cb(update_progress)
     download_academic_affairs(update_progress)
+    download_ucd_kb(update_progress)
     pass
 
 
@@ -129,6 +140,17 @@ def long_running_vectorize(task_id):
 
 
 ### Our API Endpoints
+@app.post("/api/start_downloadKnowledgeBase")
+async def start_downloadKnowledgeBase():
+    # Use threading to avoid blocking the execution
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(
+        target=long_running_download_knowledge_base, args=(task_id,)
+    )
+    thread.start()
+    return {"message": "Download started successfully", "task_id": task_id}
+
+
 @app.post("/api/downloadAcademicAffairs")
 async def start_downloadAcademicAffairs():
     # Use threading to avoid blocking the execution

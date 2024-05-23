@@ -59,16 +59,22 @@ def save_article_text_to_file(policy, text, directory):
 def download_ucd_kb(update_progress):
     """Download all UCD KB policies and save them to the file storage path."""
 
-    directory = os.path.join(file_storage_path_base, "./docs/ucd/knowledgebase")
+    directory = os.path.join(file_storage_path_base, "./docs/ucd/ucdknowledgebase")
 
     update_progress("Starting UCD KB article extraction process...")
 
     # Load the JSON file of KB articles
-    with open(
-        os.path.join(directory, "kb_knowledge.json"),
-        "r",
-    ) as f:
-        data = json.load(f)
+    try:
+        with open(
+            os.path.join(directory, "kb_knowledge.json"),
+            "r",
+        ) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        update_progress(
+            "Error: The UCD KB article JSON file was not found. Please download the file and try again."
+        )
+        return
 
     update_progress("Extracting policy details...")
 
