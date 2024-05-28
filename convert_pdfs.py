@@ -74,7 +74,7 @@ def process_directory(input_directory, output_directory, update_progress):
                 )
                 output_dir = os.path.dirname(output_path)
                 os.makedirs(output_dir, exist_ok=True)
-                os.system(f"cp {input_path} {output_path}")
+                os.system(f"cp '{input_path}' '{output_path}'")
 
             if file_counter % 25 == 0:
                 update_progress(f"Processed {file_counter} files")
@@ -97,6 +97,7 @@ def convert_pdfs(update_progress, input_directory=None, output_directory=None):
     process_directory(input_directory, output_directory, update_progress)
 
     update_progress("PDF conversion complete")
+
 
 if __name__ == "__main__":
     convert_pdfs(print)
