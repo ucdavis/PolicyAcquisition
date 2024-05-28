@@ -198,7 +198,7 @@ def get_local_union_contracts(unions: list[UnionDetail], driver) -> list[PolicyD
                         title=title,
                         url=href,
                         keywords=[union.code, union.name, union.scope],
-                        subject_areas=["Collective Bargaining"],
+                        subject_areas=["Collective Bargaining", union.code],
                         responsible_office=union.scope,
                     )
 
@@ -249,7 +249,7 @@ def get_systemwide_union_contracts(
                         title=title,
                         url=href,
                         keywords=[union.code, union.name, union.scope],
-                        subject_areas=["Collective Bargaining"],
+                        subject_areas=["Collective Bargaining", union.code],
                         responsible_office=union.scope,
                     )
                     policy_details_list.append(policy_detail)
