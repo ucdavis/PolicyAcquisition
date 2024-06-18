@@ -32,6 +32,7 @@ langchain-openai==0.1.5
 langchain-text-splitters==0.0.1
 langsmith==0.1.53
 marshmallow==3.21.2
+mongoengine==0.28.2
 multidict==6.0.5
 mypy-extensions==1.0.0
 numpy==1.26.4
