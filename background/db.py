@@ -21,11 +21,15 @@ MONGO_DB = os.getenv("MONGO_DB")
 connect(db=MONGO_DB, host=MONGO_CONNECTION)
 
 
+class RefreshFrequency(Enum):
+    DAILY = "DAILY"
+
+
 class Source(Document):
     name = StringField(required=True)
     url = StringField(required=True)
     last_updated = DateTimeField(required=True)
-    refresh_frequency = StringField(required=True)
+    refresh_frequency = EnumField(RefreshFrequency, required=True)
     _id = ObjectIdField(default=ObjectId, primary_key=True)
 
     meta = {"collection": "sources"}
