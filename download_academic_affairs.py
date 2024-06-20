@@ -81,6 +81,10 @@ def get_apm_links(driver, url):
     return policy_link_info_list
 
 
+def get_apm_url():
+    return urljoin(base_url, "apm/apm-toc")
+
+
 ### Download files for the APM
 def download_apm(driver, update_progress):
     # table of contents

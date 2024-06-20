@@ -3,10 +3,14 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from typing import List
 from dotenv import load_dotenv
 
+from crawl import get_fake_policies, get_ucop_policies
 from db import IndexAttempt, IndexStatus, RefreshFrequency, Source
 from mongoengine.queryset.visitor import Q
+
+from policy_details import PolicyDetails
 
 logger = logging.getLogger(__name__)
 
@@ -45,18 +49,28 @@ def index_documents(source: Source) -> None:
     ## OPTIONAL: eventually, we could add a check to see if the policy has been removed from the source, and if so, remove it from the db
 
     try:
+        policy_details: List[PolicyDetails] = []
+
         if source.name == "UCOP":
             # download UCOP
+            policy_details = get_ucop_policies()
             pass
         elif source.name == "UCD":
             # download UCD
+            # TODO
             pass
+        elif source.name == "FAKE":
+            policy_details = get_fake_policies()
         else:
             logger.error(f"Source {source.name} not recognized")
             attempt.status = IndexStatus.FAILURE
             attempt.error_details = f"Source {source.name} not recognized"
             attempt.save()
             return
+
+        logger.info(f"Found {len(policy_details)} documents from source {source.name}")
+
+        # TODO: loop through each policy, save to db, download files, convert to text, vectorize and save to db
 
         logger.info(f"Indexing source {source.name} successful.")
         # End timing the indexing attempt
@@ -113,19 +127,19 @@ def update_loop(delay: int = 60) -> None:
         index_documents(source)
 
 
-def tmp_create_source():
-    ## if there are no sources, create one to play with
-    sources = Source.objects()
+def tmp_reset_db():
+    # delete all sources and index attempts
+    Source.objects().delete()
+    IndexAttempt.objects().delete()
 
-    if len(sources) == 0:
-        # create a source
-        source = Source(
-            name="UCOP",
-            url="https://policy.ucop.edu/policy/",
-            refresh_frequency="daily",
-            last_updated=datetime.now(timezone.utc),
-        )
-        source.save()
+    # create a source that needs to be updated
+    source = Source(
+        name="FAKE",
+        url="https://academicaffairs.ucdavis.edu/",
+        refresh_frequency=RefreshFrequency.DAILY,
+        last_updated=datetime.now(timezone.utc) - timedelta(days=30),
+    )
+    source.save()
 
     ## delete all existing index attempts so we have a clean slate
     IndexAttempt.objects().delete()
@@ -133,7 +147,7 @@ def tmp_create_source():
 
 def update__main() -> None:
     logger.info("Starting Indexing Loop")
-    tmp_create_source()
+    tmp_reset_db()  # Testing only
     update_loop()
 
 
