@@ -18,9 +18,9 @@ import uuid
 
 from pdf2image import convert_from_path
 import requests
-from background.db import IndexAttempt, IndexStatus, IndexedDocument, Source
-from background.store import vectorize_text
+from db import IndexAttempt, IndexStatus, IndexedDocument, Source
 from logger import setup_logger
+from store import vectorize_text
 from policy_details import PolicyDetails
 from pypdf import PdfReader
 import pytesseract
@@ -139,7 +139,7 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IndexAtte
                         num_new_docs += 1
                         document = IndexedDocument(
                             url=policy.url,
-                            metadata=vectorized_document.metadata,
+                            metadata=vectorized_document.metadata.to_dict(),
                             title=policy.title,
                             filename=policy.filename,
                             last_updated=datetime.now(timezone.utc),
@@ -147,7 +147,7 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IndexAtte
                         )
                     else:
                         # existing doc so just update
-                        document.metadata = vectorized_document.metadata
+                        document.metadata = vectorized_document.metadata.to_dict()
                         document.title = policy.title
                         document.filename = policy.filename
                         document.last_updated = datetime.now(timezone.utc)

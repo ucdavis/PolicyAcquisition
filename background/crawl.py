@@ -1,10 +1,6 @@
 ## Methods for getting documents to index, generally by crawling a website and extracting the relevant information
 # Will call the appropriate method based on the source name and return a list of PolicyDetails objects
 
-import sys  ## eventually we want to move the crawl functions inside the background folder but for now let's just also check parent
-
-sys.path.append("..")
-
 from download_academic_affairs import get_apm_links, get_apm_url
 from logger import setup_logger
 from policy_details import PolicyDetails

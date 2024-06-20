@@ -10,8 +10,8 @@ from langchain_elasticsearch import ElasticsearchStore
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.embeddings import Embeddings
 
+from background.models.policy_details import VectorDocument
 from logger import setup_logger
-from policy_details import PolicyDetails, VectorDocument
 
 logger = setup_logger()
 
@@ -57,7 +57,7 @@ def vectorize_text(document: VectorDocument) -> dict:
 
     # use langchain to split the text
     langchain_document = Document(
-        page_content=document["content"], metadata=document.metadata.to_dict()
+        page_content=document.text, metadata=document.metadata.to_dict()
     )
 
     logger.info(f"Vectorizing document {document.metadata.url}")

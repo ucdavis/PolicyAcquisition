@@ -3,24 +3,19 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+import traceback
 from typing import List
 from dotenv import load_dotenv
 
-from background.ingest import ingest_documents
+from ingest import ingest_documents
 from crawl import get_fake_policies, get_ucop_policies
 from db import IndexAttempt, IndexStatus, RefreshFrequency, Source
 from mongoengine.queryset.visitor import Q
 
+from logger import setup_logger
 from policy_details import PolicyDetails
 
-logger = logging.getLogger(__name__)
-
-# Set up logging, just for development purposes for now
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)  # Set the logging level
+logger = setup_logger()
 
 load_dotenv()  # This loads the environment variables from .env
 
@@ -74,7 +69,7 @@ def index_documents(source: Source) -> None:
         )
 
         # loop through each policy, download files, convert to text, vectorize and save to db
-        ingest_result = ingest_documents(source.name, policy_details)
+        ingest_result = ingest_documents(source, policy_details)
 
         logger.info(f"Indexing source {source.name} successful.")
 
@@ -99,7 +94,7 @@ def index_documents(source: Source) -> None:
 
         # Record a failed index attempt
         attempt.status = IndexStatus.FAILURE
-        attempt.error_details = str(e)
+        attempt.error_details = traceback.format_exc()  # Get full traceback
         attempt.end_time = end_time
 
         attempt.save()
