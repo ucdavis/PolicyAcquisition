@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List
 from dotenv import load_dotenv
 
+from background.ingest import ingest_documents
 from crawl import get_fake_policies, get_ucop_policies
 from db import IndexAttempt, IndexStatus, RefreshFrequency, Source
 from mongoengine.queryset.visitor import Q
@@ -68,11 +69,15 @@ def index_documents(source: Source) -> None:
             attempt.save()
             return
 
-        logger.info(f"Found {len(policy_details)} documents from source {source.name}")
+        logger.info(
+            f"Found {len(policy_details)} documents from source {source.name}. Ingesting..."
+        )
 
-        # TODO: loop through each policy, save to db, download files, convert to text, vectorize and save to db
+        # loop through each policy, download files, convert to text, vectorize and save to db
+        ingest_result = ingest_documents(source.name, policy_details)
 
         logger.info(f"Indexing source {source.name} successful.")
+
         # End timing the indexing attempt
         end_time = datetime.now(timezone.utc)
 
@@ -80,8 +85,8 @@ def index_documents(source: Source) -> None:
         attempt.status = IndexStatus.SUCCESS
         attempt.end_time = end_time
         attempt.duration = (end_time - start_time).total_seconds()
-        attempt.num_docs_indexed = 0  # TODO: update with actual counts
-        attempt.num_new_docs = 0  # TODO: update with actual counts
+        attempt.num_docs_indexed = ingest_result.num_docs_indexed
+        attempt.num_new_docs = ingest_result.num_new_docs
         attempt.num_docs_removed = 0  # TODO: update with actual counts
 
         source.last_updated = datetime.now(timezone.utc)
