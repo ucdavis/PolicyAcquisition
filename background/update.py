@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from ingest import ingest_documents
 from crawl import get_fake_policies, get_ucop_policies
-from db import IndexAttempt, IndexStatus, RefreshFrequency, Source
+from db import IndexAttempt, IndexStatus, IndexedDocument, RefreshFrequency, Source
 from mongoengine.queryset.visitor import Q
 
 from logger import setup_logger
@@ -100,6 +100,8 @@ def index_documents(source: Source) -> None:
         attempt.save()
         logger.warning(f"Indexing failed for source: {source.name} due to {e}")
 
+        ## TODO: source should have # failed attempts, and status field.  If too many failed attempts, disable the source and send an alert
+
 
 def update_loop(delay: int = 60) -> None:
     while True:
@@ -128,9 +130,10 @@ def update_loop(delay: int = 60) -> None:
 
 
 def tmp_reset_db():
-    # delete all sources and index attempts
+    # delete all sources and index attempts and documents
     Source.objects().delete()
     IndexAttempt.objects().delete()
+    IndexedDocument.objects().delete()
 
     # create a source that needs to be updated
     source = Source(

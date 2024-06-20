@@ -66,7 +66,22 @@ def vectorize_text(document: VectorDocument) -> dict:
 
     splitDocs = text_splitter.split_documents([langchain_document])
 
-    # now push to Elasticsearch
+    # delete any existing documents first with the same url
+    try:
+        es_client.delete_by_query(
+            index=ELASTIC_INDEX,
+            body={"query": {"term": {"metadata.url": document.metadata.url}}},
+        )
+    except Exception:
+        pass  # ignore if index doesn't exist or any other error
+
+    # now push the new documents
+    ElasticsearchStore.from_documents(
+        splitDocs,
+        embedding,
+        index_name=ELASTIC_INDEX,
+        es_connection=es_client,
+    )
 
     logger.info(f"Done indexing document {document.metadata.url}")
 
