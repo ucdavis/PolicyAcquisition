@@ -25,11 +25,20 @@ class RefreshFrequency(Enum):
     DAILY = "DAILY"
 
 
+class SourceStatus(Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    FAILED = "FAILED"
+
+
 class Source(Document):
     name = StringField(required=True)
     url = StringField(required=True)
     last_updated = DateTimeField(required=True)
+    last_failed = DateTimeField(required=False)
     refresh_frequency = EnumField(RefreshFrequency, required=True)
+    failure_count = IntField(default=0)
+    status = EnumField(SourceStatus, required=True)
     _id = ObjectIdField(default=ObjectId, primary_key=True)
 
     meta = {"collection": "sources"}
