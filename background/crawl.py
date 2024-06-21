@@ -1,12 +1,26 @@
 ## Methods for getting documents to index, generally by crawling a website and extracting the relevant information
 # Will call the appropriate method based on the source name and return a list of PolicyDetails objects
 
+from db import SourceName
 from download_academic_affairs import get_apm_links, get_apm_url
 from logger import setup_logger
 from policy_details import PolicyDetails
 from shared import get_driver
 
 logger = setup_logger()
+
+
+def get_source_policy_list(source_name: str) -> list[PolicyDetails] | None:
+    """
+    Get the list of policies to index for the given source
+    """
+    if source_name == SourceName.UCOP.value:
+        return get_ucop_policies()
+    elif source_name == SourceName.UCDAPM.value:
+        return get_academic_affairs_apm()
+    else:
+        logger.error(f"Unknown source name {source_name}")
+        return None
 
 
 def get_ucop_policies() -> list[PolicyDetails]:
@@ -35,7 +49,7 @@ def get_fake_policies() -> list[PolicyDetails]:
     return [policy1, policy2]
 
 
-def get_academic_affairs_policies() -> list[PolicyDetails]:
+def get_academic_affairs_apm() -> list[PolicyDetails]:
     """
     Get the list of Academic Affairs policies to index
     """

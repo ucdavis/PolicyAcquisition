@@ -31,6 +31,11 @@ class SourceStatus(Enum):
     FAILED = "FAILED"
 
 
+class SourceName(Enum):
+    UCOP = "UCOP"
+    UCDAPM = "UCDAPM"
+
+
 class Source(Document):
     name = StringField(required=True)
     url = StringField(required=True)

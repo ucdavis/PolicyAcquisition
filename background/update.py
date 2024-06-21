@@ -8,13 +8,14 @@ from typing import List
 from dotenv import load_dotenv
 
 from ingest import ingest_documents
-from crawl import get_fake_policies, get_ucop_policies
+from crawl import get_fake_policies, get_source_policy_list, get_ucop_policies
 from db import (
     IndexAttempt,
     IndexStatus,
     IndexedDocument,
     RefreshFrequency,
     Source,
+    SourceName,
     SourceStatus,
 )
 from mongoengine.queryset.visitor import Q
@@ -55,19 +56,9 @@ def index_documents(source: Source) -> None:
     ## OPTIONAL: eventually, we could add a check to see if the policy has been removed from the source, and if so, remove it from the db
 
     try:
-        policy_details: List[PolicyDetails] = []
+        policy_details = get_source_policy_list(source.name)
 
-        if source.name == "UCOP":
-            # download UCOP
-            policy_details = get_ucop_policies()
-            pass
-        elif source.name == "UCD":
-            # download UCD
-            # TODO
-            pass
-        elif source.name == "FAKE":
-            policy_details = get_fake_policies()
-        else:
+        if policy_details is None:
             logger.error(f"Source {source.name} not recognized")
 
             # automatically fail the attempt, save error details and disable the source
@@ -148,7 +139,7 @@ def update_loop(delay: int = 60) -> None:
 
         # we don't want to index any sources that have failed recently
         filtered_sources = []
-        current_time = datetime.datetime.now()
+        current_time = datetime.now()
 
         for source in sources_to_index:
             if (
@@ -182,7 +173,7 @@ def tmp_reset_db():
 
     # create a source that needs to be updated
     source = Source(
-        name="FAKE",
+        name=SourceName.UCDAPM.value,
         url="https://academicaffairs.ucdavis.edu/",
         refresh_frequency=RefreshFrequency.DAILY,
         last_updated=datetime.now(timezone.utc) - timedelta(days=30),
