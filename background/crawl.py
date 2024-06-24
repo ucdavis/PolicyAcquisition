@@ -41,13 +41,20 @@ def get_ucdavis_policies() -> list[PolicyDetails]:
     policy_details_list = []
 
     for binder in binders:
-        url = binder
+        # each binder is a tuple of (binder_name, binder_url)
+        binder_name, binder_url = binder
 
-        logger.info(f"Getting UC Davis policy info from {url} for {binder}")
+        logger.info(
+            f"Getting UC Davis policy info from {binder_url} for binder {binder_name}"
+        )
 
-        policy_details_list.append(get_ucd_policy_links(driver, url))
+        binder_links = get_ucd_policy_links(driver, binder_url)
 
-        logger.info(f"Found {len(policy_details_list)} UC Davis policies for {binder}")
+        policy_details_list.extend(binder_links)
+
+        logger.info(
+            f"Found {len(binder_links)} UC Davis policies for binder {binder_name}"
+        )
 
     driver.quit()
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 from urllib.parse import urljoin
+from background.logger import setup_logger
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -18,7 +19,7 @@ from shared import get_driver
 
 load_dotenv()  # This loads the environment variables from .env
 
-logger = logging.getLogger(__name__)
+logger = setup_logger()
 
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
@@ -59,6 +60,8 @@ def get_ucd_policy_links(driver, url):
         if pdf_src:
             pdf_url = urljoin(base_url, pdf_src)
             policy.url = pdf_url
+
+    return policy_links
 
 
 def sanitize_filename(filename):
