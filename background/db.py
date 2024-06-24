@@ -33,6 +33,7 @@ class SourceStatus(Enum):
 
 class SourceName(Enum):
     UCOP = "UCOP"
+    UCCOLLECTIVEBARGAINING = "UCCOLLECTIVEBARGAINING"
     UCDAPM = "UCDAPM"
     UCDPOLICY = "UCDPOLICY"
 

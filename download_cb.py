@@ -8,17 +8,35 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import requests
 import json
+from background.logger import setup_logger
 from policy_details import PolicyDetails
 from shared import get_driver
 from result import Ok, Err, Result, is_ok, is_err
 
 # Test using python -m doctest -v download_cb.py
 load_dotenv()  # This loads the environment variables from .env
-logger = logging.getLogger(__name__)
+
+logger = setup_logger()
+
 file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
 
 site_url = "https://ucnet.universityofcalifornia.edu"
 base_url = "https://ucnet.universityofcalifornia.edu/resources/employment-policies-contracts/bargaining-units/"  # Collective Bargaining Contracts
+
+
+def get_uc_collective_bargaining_links(driver) -> list[PolicyDetails]:
+    home_url = f"{base_url}"
+
+    # using the homepage, get the list of unions w/ metadata
+    # local and systemwide unions are different in formatting so we need to handle them separately
+    local_unions = get_local_unions(home_url, driver)
+    systemwide_unions = get_systemwide_unions(home_url, driver)
+
+    # for each union, get the list of contracts and join into one policy details list
+    policy_details = get_local_union_contracts(local_unions, driver)
+    policy_details += get_systemwide_union_contracts(systemwide_unions, driver)
+
+    return policy_details
 
 
 def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:

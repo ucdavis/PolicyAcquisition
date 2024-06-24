@@ -3,6 +3,7 @@
 
 from db import SourceName
 from download_academic_affairs import get_apm_links, get_apm_url
+from download_cb import get_uc_collective_bargaining_links
 from download_ucd_policies import get_ucd_policy_binders, get_ucd_policy_links
 from download_ucop_policies import get_ucop_links, get_ucop_policies_url
 from logger import setup_logger
@@ -22,9 +23,26 @@ def get_source_policy_list(source_name: str) -> list[PolicyDetails] | None:
         return get_academic_affairs_apm()
     elif source_name == SourceName.UCDPOLICY.value:
         return get_ucdavis_policies()
+    elif source_name == SourceName.UCCOLLECTIVEBARGAINING.value:
+        return get_uc_collective_bargaining_policies()
     else:
         logger.error(f"Unknown source name {source_name}")
         return None
+
+
+def get_uc_collective_bargaining_policies() -> list[PolicyDetails]:
+    """
+    Get the list of UC Collective Bargaining policies to index
+    """
+    driver = get_driver()
+
+    policy_details_list = get_uc_collective_bargaining_links(driver)
+
+    logger.info(f"Found {len(policy_details_list)} UC Collective Bargaining documents")
+
+    driver.quit()
+
+    return policy_details_list
 
 
 def get_ucdavis_policies() -> list[PolicyDetails]:
