@@ -34,6 +34,7 @@ class SourceStatus(Enum):
 class SourceName(Enum):
     UCOP = "UCOP"
     UCDAPM = "UCDAPM"
+    UCDPOLICY = "UCDPOLICY"
 
 
 class Source(Document):
