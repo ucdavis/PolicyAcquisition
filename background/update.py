@@ -173,8 +173,8 @@ def tmp_reset_db():
 
     # create a source that needs to be updated
     source = Source(
-        name=SourceName.UCDAPM.value,
-        url="https://academicaffairs.ucdavis.edu/",
+        name=SourceName.UCOP.value,
+        url="https://policy.ucop.edu/",
         refresh_frequency=RefreshFrequency.DAILY,
         last_updated=datetime.now(timezone.utc) - timedelta(days=30),
         status=SourceStatus.ACTIVE,
