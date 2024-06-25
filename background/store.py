@@ -35,9 +35,9 @@ es_client = Elasticsearch(
     retry_on_timeout=True,
 )
 
-# might want to play with `text-embedding-3-small` later
-# embedding = OpenAIEmbeddings(model="text-embedding-3-large")
-embedding = OpenAIEmbeddings(model="text-embedding-3-small")  # small for testing
+embedding = OpenAIEmbeddings(
+    os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+)
 
 # revisions are classified as "Resource" but we don't want to include them in the search
 ignoredClassifications = ["Resource"]
