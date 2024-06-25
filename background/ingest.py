@@ -21,7 +21,7 @@ import requests
 from db import IndexAttempt, IndexStatus, IndexedDocument, Source
 from logger import setup_logger
 from store import vectorize_text
-from policy_details import PolicyDetails
+from models.policy_details import PolicyDetails
 from pypdf import PdfReader
 import pytesseract
 

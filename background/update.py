@@ -8,7 +8,7 @@ from typing import List
 from dotenv import load_dotenv
 
 from ingest import ingest_documents
-from crawl import get_fake_policies, get_source_policy_list, get_ucop_policies
+from crawl import get_source_policy_list
 from db import (
     IndexAttempt,
     IndexStatus,
@@ -21,7 +21,7 @@ from db import (
 from mongoengine.queryset.visitor import Q
 
 from logger import setup_logger
-from policy_details import PolicyDetails
+from models.policy_details import PolicyDetails
 
 logger = setup_logger()
 
@@ -173,7 +173,7 @@ def tmp_reset_db():
 
     # create a source that needs to be updated
     source = Source(
-        name=SourceName.UCCOLLECTIVEBARGAINING.value,
+        name=SourceName.UCDAPM.value,
         url="https://policy.ucop.edu/",
         refresh_frequency=RefreshFrequency.DAILY,
         last_updated=datetime.now(timezone.utc) - timedelta(days=30),

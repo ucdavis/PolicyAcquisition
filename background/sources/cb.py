@@ -1,17 +1,11 @@
-import logging
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-import requests
-import json
 from background.logger import setup_logger
-from policy_details import PolicyDetails
-from shared import get_driver
-from result import Ok, Err, Result, is_ok, is_err
+from background.models.policy_details import PolicyDetails
 
 # Test using python -m doctest -v download_cb.py
 load_dotenv()  # This loads the environment variables from .env
@@ -37,41 +31,6 @@ def get_uc_collective_bargaining_links(driver) -> list[PolicyDetails]:
     policy_details += get_systemwide_union_contracts(systemwide_unions, driver)
 
     return policy_details
-
-
-def download_pdf(url: str, directory: str, filename: str) -> Result[str, str]:
-    """Download PDF files from the web
-
-    Args:
-        url: URL of the file to download
-        directory: Directory to place the file
-        filename: The name of the file to save
-
-    Returns:
-       Result: Ok if the file was downloaded, Err if there was an error
-
-    >>> download_pdf('https://ucnet.universityofcalifornia.edu/labor/bargaining-units/cx/docs/cx_2022-2026_00_complete.pdf', './output/docs/collective_bargaining_contracts', 'cx_2022-2026_00_complete.pdf')
-    Err('Already have cx_2022-2026_00_complete.pdf')
-    """
-    response = requests.get(url, allow_redirects=True)
-
-    # Create the folder if it doesn't exist
-    os.makedirs(directory, exist_ok=True)
-
-    path = os.path.join(directory, filename)
-    # if we already have the file, skip it
-    if os.path.exists(path):
-        logger.info(f"Already have {filename}")
-        return Err(f"Already have {filename}")
-
-    with open(path, "wb") as file:
-        file.write(response.content)
-
-    if not os.path.exists(path):
-        logger.error(f"Failed to download {filename}")
-        return Err(f"Failed to download {filename}")
-
-    return Ok(f"Downloaded {filename}")
 
 
 class UnionDetail:
@@ -273,86 +232,3 @@ def get_systemwide_union_contracts(
                     policy_details_list.append(policy_detail)
 
     return policy_details_list
-
-
-def download_cb(update_progress):
-    """Download the collective bargaining contracts from UCOP
-    Crawls the barganing contracts pages and downloads all the PDFs
-
-    Args:
-        update_progress (_type_): A function to update the progress bar
-    """
-    driver = get_driver()
-
-    update_progress("Downloading the collective bargaining contracts...")
-
-    # pull a list of all policies
-    home_url = f"{base_url}"
-
-    # using the homepage, get the list of unions w/ metadata
-    # local and systemwide unions are different in formatting so we need to handle them separately
-    local_unions = get_local_unions(home_url, driver)
-    systemwide_unions = get_systemwide_unions(home_url, driver)
-
-    update_progress(f"Found {len(local_unions)} local unions")
-    update_progress(f"Found {len(systemwide_unions)} systemwide unions")
-
-    # for each union, get the list of contracts and join into one policy details list
-    policy_details = get_local_union_contracts(local_unions, driver)
-    policy_details += get_systemwide_union_contracts(systemwide_unions, driver)
-
-    # all policies are now in the policy_details list
-    update_progress(f"Found {len(policy_details)} policies")
-
-    driver.quit()  # done with the browser
-
-    # Create a directory to save the PDFs
-    directory = os.path.join(
-        file_storage_path_base, "./docs/collective_bargaining_contracts"
-    )
-    os.makedirs(directory, exist_ok=True)
-
-    # save the list of policies with other metadata to a JSON file for later
-    policy_details_json_path = os.path.join(directory, "metadata.json")
-
-    # delete the file if it exists
-    try:
-        os.remove(policy_details_json_path)
-    except OSError:
-        pass
-
-    with open(policy_details_json_path, "w") as f:
-        json.dump([policy.__dict__ for policy in policy_details], f, indent=4)
-
-    # Download the PDFs
-    for i, link_info in enumerate(policy_details):
-        url = link_info.url
-        title = link_info.title
-        pdf_filename = f"{link_info.filename}.pdf"
-
-        # update progress every 20 PDFs
-        if (i + 1) % 20 == 0:
-            update_progress(
-                f"Downloading {title} from {url} as {pdf_filename} - {i+1} of {len(policy_details)}"
-            )
-
-        download_pdf(url, directory, pdf_filename)
-
-    # create a JSON file with run details
-    with open(os.path.join(directory, "run_details.json"), "w") as f:
-        completed_date = datetime.now().isoformat()
-        json.dump(
-            {
-                "total_policies": len(policy_details),
-                "status": "completed",
-                "completed_date": completed_date,
-            },
-            f,
-            indent=4,
-        )
-
-    update_progress("Finished UCNET Collective Bargaining download process")
-
-
-if __name__ == "__main__":
-    download_cb(print)

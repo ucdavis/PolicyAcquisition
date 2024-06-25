@@ -2,13 +2,14 @@
 # Will call the appropriate method based on the source name and return a list of PolicyDetails objects
 
 from db import SourceName
-from download_academic_affairs import get_apm_links, get_apm_url
-from download_cb import get_uc_collective_bargaining_links
-from download_ucd_policies import get_ucd_policy_binders, get_ucd_policy_links
-from download_ucop_policies import get_ucop_links, get_ucop_policies_url
 from logger import setup_logger
-from policy_details import PolicyDetails
-from shared import get_driver
+
+from sources.apm import get_apm_links, get_apm_url
+from sources.cb import get_uc_collective_bargaining_links
+from sources.ucd import get_ucd_policy_binders, get_ucd_policy_links
+from sources.ucop import get_ucop_links, get_ucop_policies_url
+from sources.shared import get_driver
+from models.policy_details import PolicyDetails
 
 logger = setup_logger()
 

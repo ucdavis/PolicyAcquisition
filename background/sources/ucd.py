@@ -1,5 +1,3 @@
-from datetime import datetime
-import logging
 from urllib.parse import urljoin
 from background.logger import setup_logger
 from dotenv import load_dotenv
@@ -8,14 +6,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from typing import List
-import requests
 import re
 import os
 import time
-import json
 
-from policy_details import PolicyDetails
-from shared import get_driver
+from background.models.policy_details import PolicyDetails
 
 load_dotenv()  # This loads the environment variables from .env
 
@@ -67,17 +62,6 @@ def get_ucd_policy_links(driver, url):
 def sanitize_filename(filename):
     """Sanitize the filename by removing or replacing invalid characters."""
     return re.sub(r'[\\/*?:"<>|]', "", filename)
-
-
-def download_pdf(url, directory, filename):
-    headers = {"User-Agent": user_agent}
-    response = requests.get(url, headers=headers, allow_redirects=True)
-
-    # Create the folder if it doesn't exist
-    os.makedirs(directory, exist_ok=True)
-
-    with open(os.path.join(directory, filename), "wb") as file:
-        file.write(response.content)
 
 
 def get_iframe_src_and_title(driver, url):
@@ -235,103 +219,3 @@ def get_nested_links_selenium(driver, url):
             file_links.append(link)
 
     return file_links
-
-
-# downloads files but will not go into folders
-def download_all_file_links(
-    driver, directory, doc_links: List[PolicyDetails], update_progress
-):
-    if not isinstance(doc_links, list):
-        raise TypeError("doc_links must be a list")
-
-    total_links = len(doc_links)
-
-    # provide 20 status updates during the process
-    total_updates = 20
-
-    # Calculate the frequency of updates
-    update_frequency = total_links // total_updates
-
-    # Iterate over dock_links and download each file
-    for i, doc_link in enumerate(doc_links):
-        filename = f"{sanitize_filename(doc_link.title)}.pdf"
-
-        if update_frequency > 0 and (i + 1) % update_frequency == 0:
-            progress_percentage = round(((i + 1) / total_links) * 100, 2)
-            update_progress(
-                f"{progress_percentage:.2f}% - Downloading {filename} - {i+1} of {total_links}"
-            )
-
-        # if we already have the file, skip it
-        if os.path.exists(os.path.join(directory, filename)):
-            logger.info(f"Already have {filename}")
-            continue
-
-        pdf_src, _ = get_iframe_src_and_title(driver, doc_link.url)
-
-        if pdf_src:
-            pdf_url = urljoin(base_url, pdf_src)
-            logger.info("found source for PDF: " + pdf_url + " with name " + filename)
-            # Download PDF
-            download_pdf(pdf_url, directory, filename)
-            logger.info(f"Downloaded {filename}")
-
-
-#### Main function
-#### This will read all of the policies, store their URLs in metadata.json, and then store each in a file
-#### Note: This will only add new policies to the folder, it will not overwrite existing or delete missing
-def download_ucd(update_progress):
-    """Download all UCD Ellucid policies and save them to the file storage path."""
-
-    driver = get_driver()
-
-    update_progress("Starting UCD download process...")
-
-    for binder in binders:
-        update_progress(f"Starting download for {binders[binder]}")
-
-        home_url = f"{home_url_minus_binder}/{binder}"
-        file_links = get_nested_links_selenium(driver, home_url)
-
-        logger.info("Got back all links" + str(len(file_links)))
-
-        update_progress(f"Got back {len(file_links)} links for {binders[binder]}")
-
-        binderName = binders[binder]
-        # create a directory to save the pdfs
-
-        directory = os.path.join(file_storage_path_base, "./docs/ucd/", binderName)
-
-        os.makedirs(directory, exist_ok=True)
-
-        # save the list of policies with other metadata to a JSON file for later
-        policy_details_json = os.path.join(directory, "metadata.json")
-
-        # delete the file if it exists
-        try:
-            os.remove(policy_details_json)
-        except OSError:
-            pass
-
-        with open(os.path.join(directory, "metadata.json"), "w") as f:
-            json.dump([policy.__dict__ for policy in file_links], f, indent=4)
-
-        download_all_file_links(driver, directory, file_links, update_progress)
-
-        # create a JSON file with run details for this binder
-        with open(os.path.join(directory, "run_details.json"), "w") as f:
-            completed_date = datetime.now().isoformat()
-            json.dump(
-                {
-                    "total_policies": len(file_links),
-                    "status": "completed",
-                    "completed_date": completed_date,
-                },
-                f,
-                indent=4,
-            )
-
-    update_progress("Finished UCD download process...")
-
-    # Close the driver
-    driver.quit()

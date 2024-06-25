@@ -10,7 +10,7 @@ from langchain_elasticsearch import ElasticsearchStore
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.embeddings import Embeddings
 
-from background.models.policy_details import VectorDocument
+from models.policy_details import VectorDocument
 from logger import setup_logger
 
 logger = setup_logger()
@@ -36,7 +36,7 @@ es_client = Elasticsearch(
 )
 
 embedding = OpenAIEmbeddings(
-    os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+    model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 )
 
 # revisions are classified as "Resource" but we don't want to include them in the search
