@@ -30,6 +30,24 @@ logger = setup_logger()
 user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
+class IngestResult:
+    def __init__(
+        self,
+        num_docs_indexed,
+        num_new_docs,
+        source_id,
+        start_time,
+        end_time,
+        duration,
+    ):
+        self.num_docs_indexed = num_docs_indexed
+        self.num_new_docs = num_new_docs
+        self.source_id = source_id
+        self.start_time = start_time
+        self.end_time = end_time
+        self.duration = duration
+
+
 # download the document and return a path to the downloaded file
 def download_pdf(url: str, dir: str) -> str:
     headers = {"User-Agent": user_agent}
@@ -88,7 +106,7 @@ def get_document_by_url(url: str) -> IndexedDocument:
     return IndexedDocument.objects(url=url).first()
 
 
-def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IndexAttempt:
+def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestResult:
     start_time = datetime.now(timezone.utc)
     num_docs_indexed = 0
     num_new_docs = 0
@@ -163,15 +181,11 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IndexAtte
 
         ## TODO: somewhere remove old documents that are no longer in the source
 
-        # not a real attempt but useful for returning the results. not sure the best way to handle this -- maybe pass in the attempt object?
-        index_attempt = IndexAttempt(
+        return IngestResult(
             num_docs_indexed=num_docs_indexed,
             num_new_docs=num_new_docs,
             source_id=source._id,
             start_time=start_time,
             end_time=end_time,
             duration=(end_time - start_time).total_seconds(),
-            status=IndexStatus.SUCCESS,
         )
-
-        return index_attempt
