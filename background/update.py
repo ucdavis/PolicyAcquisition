@@ -1,10 +1,6 @@
-import logging
-import os
-import sys
 import time
 from datetime import datetime, timedelta, timezone
 import traceback
-from typing import List
 from dotenv import load_dotenv
 
 from ingest import ingest_documents
@@ -21,7 +17,6 @@ from db import (
 from mongoengine.queryset.visitor import Q
 
 from logger import setup_logger
-from models.policy_details import PolicyDetails
 
 logger = setup_logger()
 

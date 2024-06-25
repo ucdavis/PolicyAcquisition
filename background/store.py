@@ -2,13 +2,11 @@
 
 import os
 from elasticsearch import Elasticsearch
-from typing import List
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_elasticsearch import ElasticsearchStore
 from langchain_openai import OpenAIEmbeddings
-from langchain_core.embeddings import Embeddings
 
 from models.policy_details import VectorDocument
 from logger import setup_logger

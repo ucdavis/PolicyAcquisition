@@ -7,7 +7,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from typing import List
 from urllib.parse import urljoin
-import os
 
 from background.models.policy_details import PolicyDetails
 

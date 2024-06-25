@@ -18,7 +18,7 @@ import uuid
 
 from pdf2image import convert_from_path
 import requests
-from db import IndexAttempt, IndexStatus, IndexedDocument, Source
+from db import IndexedDocument, Source
 from logger import setup_logger
 from store import vectorize_text
 from models.policy_details import PolicyDetails
@@ -51,7 +51,7 @@ class IngestResult:
 # download the document and return a path to the downloaded file
 def download_pdf(url: str, dir: str) -> str:
     headers = {"User-Agent": user_agent}
-    response = requests.get(url, headers=headers, allow_redirects=True)
+    response = requests.get(url, headers=headers, allow_redirects=True, timeout=60)
     response.raise_for_status()
 
     unique_filename = f"{uuid.uuid4()}.pdf"
@@ -124,56 +124,55 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
             # save the document to the database
 
             # Create a temporary directory to work within
-            with tempfile.TemporaryDirectory() as temp_dir:
-                pdf_path = download_pdf(policy.url, temp_dir)
-                pdf_hash = calculate_file_hash(pdf_path)
+            pdf_path = download_pdf(policy.url, temp_dir)
+            pdf_hash = calculate_file_hash(pdf_path)
 
-                document = get_document_by_url(policy.url)
+            document = get_document_by_url(policy.url)
 
-                # if the document exists and hasn't changed, skip
-                if document and document.metadata.get("hash") == pdf_hash:
-                    logger.info(f"Document {policy.url} has not changed, skipping")
-                    continue
+            # if the document exists and hasn't changed, skip
+            if document and document.metadata.get("hash") == pdf_hash:
+                logger.info(f"Document {policy.url} has not changed, skipping")
+                continue
 
-                extracted_text = extract_text_from_pdf(pdf_path)
+            extracted_text = extract_text_from_pdf(pdf_path)
 
-                if not extracted_text:
-                    logger.warning(f"No text extracted from {pdf_path}")
-                    continue
+            if not extracted_text:
+                logger.warning(f"No text extracted from {pdf_path}")
+                continue
 
-                # add some metadata
-                vectorized_document = policy.to_vectorized_document(extracted_text)
-                vectorized_document.metadata.hash = pdf_hash
-                vectorized_document.metadata.content_length = len(extracted_text)
-                vectorized_document.metadata.scope = source.name
+            # add some metadata
+            vectorized_document = policy.to_vectorized_document(extracted_text)
+            vectorized_document.metadata.hash = pdf_hash
+            vectorized_document.metadata.content_length = len(extracted_text)
+            vectorized_document.metadata.scope = source.name
 
-                result = vectorize_text(vectorized_document)
+            result = vectorize_text(vectorized_document)
 
-                if result:
-                    logger.info(f"Successfully indexed document {policy.url}")
-                    num_docs_indexed += 1
-                    if not document:
-                        # new doc we have never seen, create it
-                        num_new_docs += 1
-                        document = IndexedDocument(
-                            url=policy.url,
-                            metadata=vectorized_document.metadata.to_dict(),
-                            title=policy.title,
-                            filename=policy.filename,
-                            last_updated=datetime.now(timezone.utc),
-                            source_id=source._id,
-                        )
-                    else:
-                        # existing doc so just update
-                        document.metadata = vectorized_document.metadata.to_dict()
-                        document.title = policy.title
-                        document.filename = policy.filename
-                        document.last_updated = datetime.now(timezone.utc)
-
-                    document.save()
-
+            if result:
+                logger.info(f"Successfully indexed document {policy.url}")
+                num_docs_indexed += 1
+                if not document:
+                    # new doc we have never seen, create it
+                    num_new_docs += 1
+                    document = IndexedDocument(
+                        url=policy.url,
+                        metadata=vectorized_document.metadata.to_dict(),
+                        title=policy.title,
+                        filename=policy.filename,
+                        last_updated=datetime.now(timezone.utc),
+                        source_id=source._id,
+                    )
                 else:
-                    logger.error(f"Failed to index document {policy.url}")
+                    # existing doc so just update
+                    document.metadata = vectorized_document.metadata.to_dict()
+                    document.title = policy.title
+                    document.filename = policy.filename
+                    document.last_updated = datetime.now(timezone.utc)
+
+                document.save()
+
+            else:
+                logger.error(f"Failed to index document {policy.url}")
 
         logger.info(f"Indexed {num_docs_indexed} documents from source {source.name}")
 

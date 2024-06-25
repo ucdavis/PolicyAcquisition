@@ -1,5 +1,7 @@
 #!/usr/bin/env zsh
 
+set -e
+
 VERSION=$(git rev-parse --short HEAD)
 echo "Deploying version $VERSION"
 
@@ -17,7 +19,7 @@ docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
 # 4. Update the Azure Container Instance
 echo "Updating Azure Container Instance..."
-az container update \
+az container create \
   --resource-group policy \
   --name policyacquisition \
   --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION
