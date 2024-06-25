@@ -17,9 +17,9 @@ docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
 # 4. Update the Azure Container Instance
 echo "Updating Azure Container Instance..."
-az container update \
-  --resource-group policy \
-  --name policyacquisition \
-  --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION
+# az container update \
+#   --resource-group policy \
+#   --name policyacquisition \
+#   --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
 echo "Deployment of version $VERSION completed."
