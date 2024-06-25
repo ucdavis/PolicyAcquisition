@@ -122,6 +122,17 @@ def index_documents(source: Source) -> None:
             source.status = SourceStatus.FAILED
 
 
+def cleanup_old_attempts():
+    """Set to failed any index_attempts that are INPROGRESS and started more than 1 day ago"""
+    one_day_ago = datetime.now(timezone.utc) - timedelta(days=1)
+    IndexAttempt.objects(
+        Q(status=IndexStatus.INPROGRESS) & Q(start_time__lte=one_day_ago)
+    ).update(
+        status=IndexStatus.FAILURE,
+        error_details="Indexing attempt took too long or was interrupted",
+    )
+
+
 def update_loop(delay: int = 60) -> None:
     while True:
         start = time.time()
@@ -185,9 +196,25 @@ def tmp_reset_db():
     IndexAttempt.objects().delete()
 
 
+def ensure_default_source():
+    # make sure we have the APM source setup
+    source = Source.objects(name=SourceName.UCDAPM.value).first()
+
+    if not source:
+        source = Source(
+            name=SourceName.UCDAPM.value,
+            url="https://policy.ucop.edu/",
+            refresh_frequency=RefreshFrequency.DAILY,
+            last_updated=datetime.now(timezone.utc) - timedelta(days=30),
+            status=SourceStatus.ACTIVE,
+        )
+        source.save()
+
+
 def update__main() -> None:
     logger.info("Starting Indexing Loop")
-    tmp_reset_db()  # Testing only
+    cleanup_old_attempts()
+    ensure_default_source()  # TMP: don't delete anything but make sure the APM source is in there
     update_loop()
 
 

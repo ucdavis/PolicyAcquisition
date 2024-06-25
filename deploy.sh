@@ -15,8 +15,11 @@ az acr login --name PolicyWonkContainers
 echo "Pushing Docker image..."
 docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
-# 4. Deploy the Image
-echo "Deploying image to Azure Container App..."
-az webapp config container set --name policyacquisition --resource-group policy --docker-custom-image-name policywonkcontainers.azurecr.io/policyacquisition:$VERSION
+# 4. Update the Azure Container Instance
+echo "Updating Azure Container Instance..."
+az container update \
+  --resource-group policy \
+  --name policyacquisition \
+  --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
 echo "Deployment of version $VERSION completed."
