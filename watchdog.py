@@ -14,7 +14,13 @@ while True:
         logger.info(f"Starting process: {' '.join(command)}")
         process = subprocess.Popen(command)
         process.wait()
+
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, command)
+    except subprocess.CalledProcessError as e:
+        logger.exception(f"Process failed with a non-zero exit code: {e.returncode}")
     except Exception as e:
         logger.exception(f"Process failed with error: {e}")
+
     logger.info("Restarting process in 5 seconds...")
     time.sleep(5)

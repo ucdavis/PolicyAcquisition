@@ -6,8 +6,8 @@ VERSION=$(git rev-parse --short HEAD)
 echo "Deploying version $VERSION"
 
 # 1. Build the Docker Image
-# echo "Building Docker image..."
-# docker build -t policywonkcontainers.azurecr.io/policyacquisition:$VERSION .
+echo "Building Docker image..."
+docker build -t policywonkcontainers.azurecr.io/policyacquisition:$VERSION .
 
 # 2. Fetch registry credentials
 echo "Fetching Azure Container Registry credentials..."
@@ -21,8 +21,8 @@ echo "Logging into Azure Container Registry..."
 echo $ACR_PASSWORD | docker login policywonkcontainers.azurecr.io -u $ACR_USERNAME --password-stdin
 
 # 4. Push the Docker Image
-# echo "Pushing Docker image..."
-# docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
+echo "Pushing Docker image..."
+docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
 # 5. Update the Azure Container Instance
 echo "Updating Azure Container Instance..."
