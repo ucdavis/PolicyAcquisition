@@ -123,7 +123,10 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
             # save the document to elastic search
             # save the document to the database
 
-            # Create a temporary directory to work within
+            if not policy:
+                logger.warning(f"Policy is None, skipping")
+                continue
+
             pdf_path = download_pdf(policy.url, temp_dir)
             pdf_hash = calculate_file_hash(pdf_path)
 
