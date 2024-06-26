@@ -13,13 +13,14 @@ from datetime import datetime, timezone
 import hashlib
 import os
 import tempfile
+import time
 from typing import List
 import uuid
 
 from pdf2image import convert_from_path
 import requests
 from db import IndexedDocument, Source
-from logger import setup_logger
+from logger import log_memory_usage, setup_logger
 from store import vectorize_text
 from models.policy_details import PolicyDetails
 from pypdf import PdfReader
@@ -48,10 +49,49 @@ class IngestResult:
         self.duration = duration
 
 
+def request_with_retry(url, retries=5, backoff_factor=1, **kwargs):
+    """
+    Sends a GET request to the specified URL with retry mechanism.
+
+    Args:
+        url (str): The URL to send the request to.
+        retries (int, optional): The number of retries to attempt. Defaults to 5.
+        backoff_factor (int, optional): The backoff factor for exponential backoff. Defaults to 1.
+        **kwargs: Additional keyword arguments to pass to the requests.get() function.
+
+    Returns:
+        requests.Response or None: The response object if the request is successful, None otherwise.
+    """
+    for attempt in range(retries):
+        try:
+            response = requests.get(url, **kwargs)
+            if response.status_code == 200:
+                return response
+            else:
+                logger.warning(
+                    f"Request to {url} returned status code {response.status_code} on attempt {attempt + 1}"
+                )
+        except requests.exceptions.RequestException as e:
+            logger.warning(
+                f"Request to {url} failed on attempt {attempt + 1} with exception: {e}"
+            )
+
+        # If we are here, that means the request failed. We wait before retrying.
+        wait_time = backoff_factor * (2**attempt)
+        logger.info(f"Retrying request to {url} in {wait_time} seconds...")
+        time.sleep(wait_time)
+
+    # If we exit the loop without returning, it means we've exhausted all attempts
+    logger.error(f"Failed to fetch {url} after {retries} attempts")
+    return None
+
+
 # download the document and return a path to the downloaded file
 def download_pdf(url: str, dir: str) -> str:
     headers = {"User-Agent": user_agent}
-    response = requests.get(url, headers=headers, allow_redirects=True, timeout=60)
+    response = request_with_retry(
+        url, headers=headers, allow_redirects=True, timeout=60
+    )
     response.raise_for_status()
 
     unique_filename = f"{uuid.uuid4()}.pdf"
@@ -85,6 +125,7 @@ def extract_text_from_image(input_path):
 
 def extract_text_from_pdf(input_path: str) -> str:
     try:
+        logger.info(f"Extracting text from {input_path}")
         with open(input_path, "rb") as file:
             pdf = PdfReader(file)
             text = ""
@@ -95,6 +136,7 @@ def extract_text_from_pdf(input_path: str) -> str:
 
             # if text is empty, then we might have a scanned pdf -- try to extract text using OCR
             if not text:
+                logger.info(f"Extracting text using OCR from {input_path}")
                 text = extract_text_from_image(input_path)
 
             return text
@@ -113,6 +155,9 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
 
     with tempfile.TemporaryDirectory() as temp_dir:
         for policy in policies:
+            logger.info(f"Processing document {policy.url}")
+            log_memory_usage(logger)
+
             # TODO: for now it's all PDF, but we'll need to handle other file types
 
             # download the document

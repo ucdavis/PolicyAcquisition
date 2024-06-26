@@ -72,6 +72,10 @@ def index_documents(source: Source) -> None:
             f"Found {len(policy_details)} documents from source {source.name}. Ingesting..."
         )
 
+        # if we have no documents, raise an error
+        if len(policy_details) == 0:
+            raise ValueError(f"No documents found for source {source.name}")
+
         # loop through each policy, download files, convert to text, vectorize and save to db
         ingest_result = ingest_documents(source, policy_details)
 

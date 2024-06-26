@@ -92,6 +92,15 @@ def get_ucop_policies() -> list[PolicyDetails]:
 
     policy_details_list = get_ucop_links(driver, url)
 
+    # a little sanity checking -- should be a few hundred policies
+    if len(policy_details_list) < 50:
+        logger.error(
+            f"Found only {len(policy_details_list)} UCOP policies. Something is wrong."
+        )
+        driver.quit()
+
+        return []
+
     logger.info(f"Found {len(policy_details_list)} UCOP policies")
 
     driver.quit()

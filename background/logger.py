@@ -1,5 +1,6 @@
 import logging
 import os
+import resource
 import sys
 
 
@@ -57,3 +58,8 @@ def setup_logger(
         logger.addHandler(handler)
 
     return logger
+
+
+def log_memory_usage(logger: logging.Logger):
+    memory_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    logger.info(f"Memory Usage: {memory_usage} KB")
