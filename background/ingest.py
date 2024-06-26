@@ -12,6 +12,7 @@
 from datetime import datetime, timezone
 import hashlib
 import os
+import random
 import tempfile
 import time
 from typing import List
@@ -86,6 +87,10 @@ def request_with_retry(url, retries=5, backoff_factor=1, **kwargs):
     return None
 
 
+def wait_before_next_request():
+    time.sleep(random.uniform(1, 3))  # Sleep for 1 to 3 seconds
+
+
 # download the document and return a path to the downloaded file
 def download_pdf(url: str, dir: str) -> str:
     headers = {"User-Agent": user_agent}
@@ -112,13 +117,14 @@ def calculate_file_hash(file_path: str) -> str:
 
 
 def extract_text_from_image(input_path):
-    images = convert_from_path(
-        input_path, 300
-    )  # 300 DPI, play with larger values for better quality
-
     text = ""
-    for image in images:
-        text += pytesseract.image_to_string(image) or ""
+
+    # don't want to keep the images in memory, so write them to a temp folder and process one at a time
+    with tempfile.TemporaryDirectory() as path:
+        images = convert_from_path(input_path, 300, output_folder=path, fmt="png")
+
+        for img_path in images:
+            text += pytesseract.image_to_string(img_path) or ""
 
     return text
 
@@ -180,6 +186,8 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
             # if the document exists and hasn't changed, skip
             if document and document.metadata.get("hash") == pdf_hash:
                 logger.info(f"Document {policy.url} has not changed, skipping")
+                # if we skip a document, let's wait a bit to avoid rate limiting
+                wait_before_next_request()
                 continue
 
             extracted_text = extract_text_from_pdf(pdf_path)
