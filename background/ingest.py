@@ -97,6 +97,11 @@ def download_pdf(url: str, dir: str) -> str:
     response = request_with_retry(
         url, headers=headers, allow_redirects=True, timeout=60
     )
+
+    if not response:
+        logger.error(f"Failed to download {url}")
+        return None
+
     response.raise_for_status()
 
     unique_filename = f"{uuid.uuid4()}.pdf"
@@ -179,6 +184,11 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
                 continue
 
             pdf_path = download_pdf(policy.url, temp_dir)
+
+            if not pdf_path:
+                logger.error(f"Failed to download pdf at {policy.url}. ")
+                continue
+
             pdf_hash = calculate_file_hash(pdf_path)
 
             document = get_document_by_url(policy.url)
