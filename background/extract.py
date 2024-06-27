@@ -2,9 +2,12 @@ import os
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult, AnalyzeDocumentRequest
+from dotenv import load_dotenv
 from pypdf import PdfReader
 
 from background.logger import setup_logger
+
+load_dotenv()
 
 logger = setup_logger()
 
