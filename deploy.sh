@@ -29,8 +29,8 @@ echo "Updating Azure Container Instance..."
 az container create \
   --resource-group policy \
   --name policyacquisition \
-  --cpu 2 \
-  --memory 3 \
+  --cpu 1 \
+  --memory 8 \
   --restart-policy OnFailure \
   --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION \
   --registry-login-server policywonkcontainers.azurecr.io \

@@ -1,3 +1,4 @@
+import gc
 import time
 from datetime import datetime, timedelta, timezone
 import traceback
@@ -173,6 +174,8 @@ def update_loop(delay: int = 60) -> None:
 
         # Perform indexing
         index_documents(source)
+
+        gc.collect()  # clean up memory after each indexing run
 
 
 def tmp_reset_db():
