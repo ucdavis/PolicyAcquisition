@@ -28,7 +28,7 @@ docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 ENV_VARS=""
 while IFS= read -r line; do
   IFS='=' read -r key value <<< "$line"
-  ENV_VARS+="$key=$value"
+  ENV_VARS+="$key=$value "
 done < .env.prod
 
 # Remove trailing space
