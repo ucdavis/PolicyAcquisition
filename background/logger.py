@@ -48,14 +48,6 @@ def setup_logger(
         )
         file_handler = logging.FileHandler(file_name_template.format(name=logfile_name))
         logger.addHandler(file_handler)
-    else:
-        # no file, just dump to stdout for development purposes for now
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
 
     return logger
 

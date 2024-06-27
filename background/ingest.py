@@ -121,40 +121,6 @@ def calculate_file_hash(file_path: str) -> str:
     return hasher.hexdigest()
 
 
-def extract_text_from_image(input_path):
-    text = ""
-
-    # don't want to keep the images in memory, so write them to a temp folder and process one at a time
-    with tempfile.TemporaryDirectory() as path:
-        images = convert_from_path(input_path, 300, output_folder=path, fmt="png")
-
-        for img_path in images:
-            text += pytesseract.image_to_string(img_path) or ""
-
-    return text
-
-
-def extract_text_from_pdf(input_path: str) -> str:
-    try:
-        logger.info(f"Extracting text from {input_path}")
-        with open(input_path, "rb") as file:
-            pdf = PdfReader(file)
-            text = ""
-            for page in pdf.pages:
-                text += (
-                    page.extract_text() or ""
-                )  # Adding a fallback of empty string if None is returned
-
-            # if text is empty, then we might have a scanned pdf -- try to extract text using OCR
-            if not text:
-                logger.info(f"Extracting text using OCR from {input_path}")
-                text = extract_text_from_image(input_path)
-
-            return text
-    except Exception as e:
-        logger.error(f"Error extracting text from {input_path}: {e}")
-
-
 def get_document_by_url(url: str) -> IndexedDocument:
     return IndexedDocument.objects(url=url).first()
 
@@ -183,13 +149,13 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
                 logger.warning(f"Policy is None, skipping")
                 continue
 
-            pdf_path = download_pdf(policy.url, temp_dir)
+            local_pdf_path = download_pdf(policy.url, temp_dir)
 
-            if not pdf_path:
+            if not local_pdf_path:
                 logger.error(f"Failed to download pdf at {policy.url}. ")
                 continue
 
-            pdf_hash = calculate_file_hash(pdf_path)
+            pdf_hash = calculate_file_hash(local_pdf_path)
 
             document = get_document_by_url(policy.url)
 
@@ -200,10 +166,10 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
                 wait_before_next_request()
                 continue
 
-            extracted_text = extract_text_from_pdf(pdf_path)
+            extracted_text = extract_text_from_pdf(local_pdf_path, policy.url)
 
             if not extracted_text:
-                logger.warning(f"No text extracted from {pdf_path}")
+                logger.warning(f"No text extracted from {local_pdf_path}")
                 continue
 
             # add some metadata
