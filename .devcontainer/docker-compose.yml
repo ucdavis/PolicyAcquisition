@@ -8,6 +8,6 @@ services:
       - ../..:/workspaces:cached
     command: sleep infinity
   selenium:
-    image: selenium/standalone-chrome
+    image: seleniarm/standalone-chromium
     ports:
       - "4444:4444"

@@ -11,6 +11,9 @@
             ]
         }
     },
+    "containerEnv": {
+        "PYTHONPATH": "/workspaces/ucdpolicies"
+    },
     "postCreateCommand": "pip install -r requirements.txt"
   }
   

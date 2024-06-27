@@ -1,0 +1,11 @@
+## Docker compose file for running the application in dev
+version: '3.8'  # Adjust to the version you're using
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    command: python watchdog.py
