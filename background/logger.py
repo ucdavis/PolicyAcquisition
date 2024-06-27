@@ -1,7 +1,6 @@
 import logging
 import os
 import resource
-import sys
 
 
 def get_log_level_from_str(log_level_str: str = "INFO") -> int:

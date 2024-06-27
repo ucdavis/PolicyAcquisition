@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 python:3.11-slim
+FROM python:3.11-slim
 
 # Install dependencies required for adding a new repository
 RUN apt-get update && apt-get install -y wget gnupg2
@@ -9,9 +9,6 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     apt-get update && apt-get install -y \
     git \
     google-chrome-stable \
-    tesseract-ocr \
-    libtesseract-dev \
-    poppler-utils \
     # Add additional packages here, before the cleanup line
     && rm -rf /var/lib/apt/lists/*  # Clean up to keep the image size down
 

@@ -18,14 +18,12 @@ import time
 from typing import List
 import uuid
 
-from pdf2image import convert_from_path
 import requests
+from background.extract import extract_text_from_pdf
 from db import IndexedDocument, Source
 from logger import log_memory_usage, setup_logger
 from store import vectorize_text
 from models.policy_details import PolicyDetails
-from pypdf import PdfReader
-import pytesseract
 
 logger = setup_logger()
 
