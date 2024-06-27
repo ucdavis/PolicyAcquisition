@@ -25,13 +25,29 @@ echo "Pushing Docker image..."
 docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
 # 5. Prepare environment variable arguments for `az container create`
-ENV_VARS=()
-for VAR in $(cat .env.prod); do
-  ENV_VARS+=(--environment-variables $VAR)
-done
+ENV_VARS=""
+while IFS= read -r line; do
+  IFS='=' read -r key value <<< "$line"
+  ENV_VARS+="$key=$value"
+done < .env.prod
+
+# Remove trailing space
+ENV_VARS=$(echo $ENV_VARS | sed 's/ *$//g')
 
 # 5. Update the Azure Container Instance
 echo "Updating Azure Container Instance..."
+echo "az container create \
+  --resource-group policy \
+  --name policyacquisition \
+  --cpu 1 \
+  --memory 8 \
+  --restart-policy OnFailure \
+  --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION \
+  --registry-login-server policywonkcontainers.azurecr.io \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  --environment-variables $ENV_VARS"
+
 az container create \
   --resource-group policy \
   --name policyacquisition \
@@ -42,6 +58,6 @@ az container create \
   --registry-login-server policywonkcontainers.azurecr.io \
   --registry-username $ACR_USERNAME \
   --registry-password $ACR_PASSWORD \
-  "${ENV_VARS[@]}"
+  --environment-variables $ENV_VARS
 
 echo "Deployment of version $VERSION completed."
