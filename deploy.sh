@@ -24,6 +24,12 @@ echo $ACR_PASSWORD | docker login policywonkcontainers.azurecr.io -u $ACR_USERNA
 echo "Pushing Docker image..."
 docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
+# 5. Prepare environment variable arguments for `az container create`
+ENV_VARS=()
+for VAR in $(cat .env.prod); do
+  ENV_VARS+=(--environment-variables $VAR)
+done
+
 # 5. Update the Azure Container Instance
 echo "Updating Azure Container Instance..."
 az container create \
@@ -35,6 +41,7 @@ az container create \
   --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION \
   --registry-login-server policywonkcontainers.azurecr.io \
   --registry-username $ACR_USERNAME \
-  --registry-password $ACR_PASSWORD
+  --registry-password $ACR_PASSWORD \
+  "${ENV_VARS[@]}"
 
 echo "Deployment of version $VERSION completed."
