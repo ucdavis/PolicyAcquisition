@@ -12,8 +12,6 @@ load_dotenv()  # This loads the environment variables from .env
 
 logger = setup_logger()
 
-file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
-
 site_url = "https://ucnet.universityofcalifornia.edu"
 base_url = "https://ucnet.universityofcalifornia.edu/resources/employment-policies-contracts/bargaining-units/"  # Collective Bargaining Contracts
 

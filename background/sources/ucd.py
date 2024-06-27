@@ -16,8 +16,6 @@ load_dotenv()  # This loads the environment variables from .env
 
 logger = setup_logger()
 
-file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
-
 ## UCD Policies are on `https://ucdavispolicy.ellucid.com`
 ## There are several different binders each with their own set of policies
 base_url = "https://ucdavispolicy.ellucid.com"

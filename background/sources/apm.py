@@ -15,8 +15,6 @@ load_dotenv()  # This loads the environment variables from .env
 
 logger = logging.getLogger(__name__)
 
-file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
-
 ## UC Davis Academic Affairs Policies are on `https://academicaffairs.ucdavis.edu/`
 ## Covers APM (Academic Personnel Manual), plus other policies that we may want to include
 base_url = "https://academicaffairs.ucdavis.edu/"

@@ -14,8 +14,6 @@ load_dotenv()  # This loads the environment variables from .env
 
 logger = logging.getLogger(__name__)
 
-file_storage_path_base = os.getenv("FILE_STORAGE_PATH", "./output")
-
 ## UCOP Policies are on `https://policy.ucop.edu`
 base_url = "https://policy.ucop.edu"
 
