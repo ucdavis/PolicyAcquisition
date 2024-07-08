@@ -42,9 +42,6 @@ ignoredClassifications = ["Resource"]
 
 
 def vectorize_text(document: VectorDocument) -> dict:
-    """
-    Vectorize the text using a pre-trained model
-    """
     # skip if the document has an ignored classification
     if document.metadata.classifications:
         if any(c in ignoredClassifications for c in document.metadata.classifications):
