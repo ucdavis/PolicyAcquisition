@@ -1,5 +1,7 @@
 #!/usr/bin/env zsh
 
+set -e
+
 VERSION=$(git rev-parse --short HEAD)
 echo "Deploying version $VERSION"
 
@@ -7,16 +9,32 @@ echo "Deploying version $VERSION"
 echo "Building Docker image..."
 docker build -t policywonkcontainers.azurecr.io/policyacquisition:$VERSION .
 
-# 2. Login to Azure Container Registry
-echo "Logging into Azure Container Registry..."
-az acr login --name PolicyWonkContainers
+# 2. Fetch registry credentials
+echo "Fetching Azure Container Registry credentials..."
+REGISTRY_NAME="policywonkcontainers"
+ACR_CREDENTIALS=$(az acr credential show --name $REGISTRY_NAME --query "{username:username, password:passwords[0].value}" -o tsv)
+ACR_USERNAME=$(echo $ACR_CREDENTIALS | cut -f1)
+ACR_PASSWORD=$(echo $ACR_CREDENTIALS | cut -f2)
 
-# 3. Push the Docker Image
+# 3. Login to Azure Container Registry using fetched credentials
+echo "Logging into Azure Container Registry..."
+echo $ACR_PASSWORD | docker login policywonkcontainers.azurecr.io -u $ACR_USERNAME --password-stdin
+
+# 4. Push the Docker Image
 echo "Pushing Docker image..."
 docker push policywonkcontainers.azurecr.io/policyacquisition:$VERSION
 
-# 4. Deploy the Image
-echo "Deploying image to Azure Container App..."
-az webapp config container set --name policyacquisition --resource-group policy --docker-custom-image-name policywonkcontainers.azurecr.io/policyacquisition:$VERSION
+# 5. Update the Azure Container Instance
+echo "Updating Azure Container Instance..."
+az container create \
+  --resource-group policy \
+  --name policyacquisition \
+  --cpu 1 \
+  --memory 8 \
+  --restart-policy OnFailure \
+  --image policywonkcontainers.azurecr.io/policyacquisition:$VERSION \
+  --registry-login-server policywonkcontainers.azurecr.io \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD
 
 echo "Deployment of version $VERSION completed."

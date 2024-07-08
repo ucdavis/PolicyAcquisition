@@ -9,9 +9,6 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     apt-get update && apt-get install -y \
     git \
     google-chrome-stable \
-    tesseract-ocr \
-    libtesseract-dev \
-    poppler-utils \
     # Add additional packages here, before the cleanup line
     && rm -rf /var/lib/apt/lists/*  # Clean up to keep the image size down
 
@@ -22,18 +19,12 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Set the PYTHONPATH environment variable so we can import modules from the app
+ENV PYTHONPATH=/app
 
 # Copy the current directory contents into the container
 COPY . .
 
-# Make port 8000 available to the world outside this container
-EXPOSE 8000
-
-# Define environment variable
-ENV UVICORN_HOST=0.0.0.0
-ENV UVICORN_PORT=8000
-ENV UVICORN_LOG_LEVEL=info
-
-# Run app.py when the container launches using Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["python", "watchdog.py"]
