@@ -1,6 +1,7 @@
 ## Methods for getting documents to index, generally by crawling a website and extracting the relevant information
 # Will call the appropriate method based on the source name and return a list of PolicyDetails objects
 
+from background.sources.kb import get_kb_details
 from db import SourceName
 from logger import setup_logger
 
@@ -26,6 +27,8 @@ def get_source_policy_list(source_name: str) -> list[PolicyDetails] | None:
         return get_ucdavis_policies()
     elif source_name == SourceName.UCCOLLECTIVEBARGAINING.value:
         return get_uc_collective_bargaining_policies()
+    elif source_name == SourceName.UCDKB.value:
+        return get_kb_details()
     else:
         logger.error(f"Unknown source name {source_name}")
         return None

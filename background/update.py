@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import traceback
 from dotenv import load_dotenv
 
-from ingest import ingest_documents
+from ingest import ingest_documents, ingest_kb_documents
 from crawl import get_source_policy_list
 from db import (
     IndexAttempt,
@@ -78,7 +78,11 @@ def index_documents(source: Source) -> None:
             raise ValueError(f"No documents found for source {source.name}")
 
         # loop through each policy, download files, convert to text, vectorize and save to db
-        ingest_result = ingest_documents(source, policy_details)
+        if source.name == SourceName.UCDKB.value:
+            # KB is a special case, we have the data in a JSON file
+            ingest_result = ingest_kb_documents(source, policy_details)
+        else:
+            ingest_result = ingest_documents(source, policy_details)
 
         logger.info(f"Indexing source {source.name} successful.")
 
@@ -158,7 +162,7 @@ def update_loop(delay: int = 60) -> None:
             ):  # if the source has never failed, add it to the list
                 filtered_sources.append(source)
             else:  # if the source has failed, check if it has been long enough to try again
-                allowable_failure_time = source.last_failed + datetime.timedelta(
+                allowable_failure_time = source.last_failed + timedelta(
                     hours=source.failure_count * 6
                 )
                 if allowable_failure_time <= current_time:

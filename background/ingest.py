@@ -15,7 +15,7 @@ import os
 import random
 import tempfile
 import time
-from typing import List
+from typing import List, Tuple
 import uuid
 
 import requests
@@ -23,7 +23,7 @@ from background.extract import extract_text_from_pdf
 from db import IndexedDocument, Source
 from logger import log_memory_usage, setup_logger
 from store import vectorize_text
-from models.policy_details import PolicyDetails
+from models.policy_details import PolicyDetails, VectorDocument
 
 logger = setup_logger()
 
@@ -178,31 +178,15 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
 
             result = vectorize_text(vectorized_document)
 
-            if result:
-                logger.info(f"Successfully indexed document {policy.url}")
-                num_docs_indexed += 1
-                if not document:
-                    # new doc we have never seen, create it
-                    num_new_docs += 1
-                    document = IndexedDocument(
-                        url=policy.url,
-                        metadata=vectorized_document.metadata.to_dict(),
-                        title=policy.title,
-                        filename=policy.filename,
-                        last_updated=datetime.now(timezone.utc),
-                        source_id=source._id,
-                    )
-                else:
-                    # existing doc so just update
-                    document.metadata = vectorized_document.metadata.to_dict()
-                    document.title = policy.title
-                    document.filename = policy.filename
-                    document.last_updated = datetime.now(timezone.utc)
-
-                document.save()
-
-            else:
-                logger.error(f"Failed to index document {policy.url}")
+            update_document(
+                source,
+                num_docs_indexed,
+                num_new_docs,
+                policy,
+                document,
+                vectorized_document,
+                result,
+            )
 
         logger.info(f"Indexed {num_docs_indexed} documents from source {source.name}")
 
@@ -218,3 +202,99 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
             end_time=end_time,
             duration=(end_time - start_time).total_seconds(),
         )
+
+
+def update_document(
+    source: Source,
+    num_docs_indexed: int,
+    num_new_docs: int,
+    policy: PolicyDetails,
+    document: IndexedDocument,
+    vectorized_document: VectorDocument,
+    result: dict,
+):
+    if result:
+        logger.info(f"Successfully indexed document {policy.url}")
+        num_docs_indexed += 1
+        if not document:
+            # new doc we have never seen, create it
+            num_new_docs += 1
+            document = IndexedDocument(
+                url=policy.url,
+                metadata=vectorized_document.metadata.to_dict(),
+                title=policy.title,
+                filename=policy.filename,
+                last_updated=datetime.now(timezone.utc),
+                source_id=source._id,
+            )
+        else:
+            # existing doc so just update
+            document.metadata = vectorized_document.metadata.to_dict()
+            document.title = policy.title
+            document.filename = policy.filename
+            document.last_updated = datetime.now(timezone.utc)
+
+        document.save()
+
+    else:
+        logger.error(f"Failed to index document {policy.url}")
+
+
+def ingest_kb_documents(
+    source: Source, policy_details_with_text: List[Tuple[PolicyDetails, str]]
+) -> IngestResult:
+    # KB is a special case, we already have the content
+    # eventually it'd be nice to either scrape the site or get API access instead
+    start_time = datetime.now(timezone.utc)
+    num_docs_indexed = 0
+    num_new_docs = 0
+
+    for policy, text in policy_details_with_text:
+        logger.info(f"Processing document {policy.url}")
+        log_memory_usage(logger)
+
+        hash = hashlib.sha256(text.encode()).hexdigest()
+
+        document = get_document_by_url(policy.url)
+
+        # if the document exists and hasn't changed, skip
+        if document and document.metadata.get("hash") == hash:
+            logger.info(f"Document {policy.url} has not changed, skipping")
+            continue
+
+        if not text:
+            logger.warning(f"No text extracted from {policy.url}")
+            continue
+
+        # add some metadata
+        vectorized_document = policy.to_vectorized_document(text)
+        vectorized_document.metadata.hash = hash
+        vectorized_document.metadata.content_length = len(text)
+        vectorized_document.metadata.scope = source.name
+
+        result = vectorize_text(vectorized_document)
+
+        update_document(
+            source,
+            num_docs_indexed,
+            num_new_docs,
+            policy,
+            document,
+            vectorized_document,
+            result,
+        )
+
+    logger.info(f"Indexed {num_docs_indexed} documents from source {source.name}")
+
+    end_time = datetime.now(timezone.utc)
+
+    ## TODO: somewhere remove old documents that are no longer in the source
+
+    return IngestResult(
+        num_docs_indexed=num_docs_indexed,
+        num_new_docs=num_new_docs,
+        source_id=source._id,
+        start_time=start_time,
+        end_time=end_time,
+        duration=(end_time - start_time).total_seconds(),
+    )

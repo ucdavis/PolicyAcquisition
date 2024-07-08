@@ -36,6 +36,7 @@ class SourceName(Enum):
     UCCOLLECTIVEBARGAINING = "UCCOLLECTIVEBARGAINING"
     UCDAPM = "UCDAPM"
     UCDPOLICY = "UCDPOLICY"
+    UCDKB = "UCDKB"
 
 
 class Source(Document):
