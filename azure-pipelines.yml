@@ -37,3 +37,10 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish source code as build artifact
+      inputs:
+        PathtoPublish: '$(Build.SourcesDirectory)'
+        ArtifactName: 'source-code'
+        publishLocation: 'Container'
