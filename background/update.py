@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import traceback
 from dotenv import load_dotenv
 
-from ingest import ingest_documents, ingest_kb_documents
+from ingest import ingest_policies, ingest_kb_documents
 from crawl import get_source_policy_list
 from db import (
     IndexAttempt,
@@ -80,10 +80,11 @@ def index_documents(source: Source) -> None:
 
         # loop through each policy, download files, convert to text, vectorize and save to db
         if source.name == SourceName.UCDKB.value:
-            # KB is a special case, we have the data in a JSON file
+            # KB is a special case, we have the data in a local JSON file
+            ## TODO: move to remote storage of JSON file
             ingest_result = ingest_kb_documents(source, policy_details)
         else:
-            ingest_result = ingest_documents(source, policy_details)
+            ingest_result = ingest_policies(source, policy_details)
 
         logger.info(f"Indexing source {source.name} successful.")
 
