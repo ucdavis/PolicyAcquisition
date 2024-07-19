@@ -2,7 +2,7 @@
 # Will call the appropriate method based on the source name and return a list of PolicyDetails objects
 
 from background.sources.kb import get_kb_details
-from db import SourceName
+from db import Source, SourceName, SourceType
 from logger import setup_logger
 
 from sources.apm import get_apm_links, get_apm_url
@@ -15,10 +15,27 @@ from models.policy_details import PolicyDetails
 logger = setup_logger()
 
 
-def get_source_policy_list(source_name: str) -> list[PolicyDetails] | None:
+def get_source_policy_list(source: Source) -> list[PolicyDetails] | None:
     """
     Get the list of policies to index for the given source
     """
+    if source.type == SourceType.SITEMAP:
+        return []
+    elif source.type == SourceType.RECURSIVE:
+        return []  # TODO: implement recursive crawling
+    elif source.type == SourceType.CUSTOM:
+        return get_custom_policies(source)
+    else:
+        logger.error(f"Unknown source type {source.type}")
+        return None
+
+
+def get_custom_policies(source: Source) -> list[PolicyDetails] | None:
+    """
+    These are custom sources that need special handling
+    """
+    source_name = source.name
+
     if source_name == SourceName.UCOP.value:
         return get_ucop_policies()
     elif source_name == SourceName.UCDAPM.value:

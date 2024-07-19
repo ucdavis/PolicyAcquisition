@@ -14,6 +14,7 @@ from db import (
     Source,
     SourceName,
     SourceStatus,
+    SourceType,
 )
 from mongoengine.queryset.visitor import Q
 
@@ -45,14 +46,14 @@ def index_documents(source: Source) -> None:
 
     attempt.save()
 
-    ## TODO: each source should return a list of PolicyDetails objects from their respective functions
-    ## then common code to loop through each, save to db, download files, convert to text, vectorize and save to db
-    ## want to check if the policy already exists in the db, if so, update the metadata and text, if not, create a new one.  use hash to check if file has changed
+    ## each source returns a list of PolicyDetails objects from their respective functions
+    ## then common code loops through each, save to db, download files, convert to text, vectorize and save to db
+    ## check if the policy already exists in the db, if so, update the metadata and text, if not, create a new one.  use hash to check if file has changed
     ## then when all are done, update the source last_updated field and update the attempt with the final counts
-    ## OPTIONAL: eventually, we could add a check to see if the policy has been removed from the source, and if so, remove it from the db
+    ## TODO: eventually, we could add a check to see if the policy has been removed from the source, and if so, remove it from the db
 
     try:
-        policy_details = get_source_policy_list(source.name)
+        policy_details = get_source_policy_list(source)
 
         if policy_details is None:
             logger.error(f"Source {source.name} not recognized")
@@ -192,6 +193,7 @@ def tmp_reset_db():
     source = Source(
         name=SourceName.UCDAPM.value,
         url="https://policy.ucop.edu/",
+        type=SourceType.CUSTOM,
         refresh_frequency=RefreshFrequency.DAILY,
         last_updated=datetime.now(timezone.utc) - timedelta(days=30),
         status=SourceStatus.ACTIVE,
@@ -210,6 +212,7 @@ def ensure_default_source():
         source = Source(
             name=SourceName.UCDAPM.value,
             url="https://policy.ucop.edu/",
+            type=SourceType.CUSTOM,
             refresh_frequency=RefreshFrequency.DAILY,
             last_updated=datetime.now(timezone.utc) - timedelta(days=30),
             status=SourceStatus.ACTIVE,
