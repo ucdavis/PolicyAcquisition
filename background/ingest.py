@@ -21,7 +21,6 @@ import uuid
 import requests
 from background.extract import (
     cleanup_extracted_text,
-    extract_text_from_pdf,
     extract_text_from_policy_file,
 )
 from db import IndexedDocument, Source
