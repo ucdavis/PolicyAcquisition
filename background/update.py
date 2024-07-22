@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import traceback
 from dotenv import load_dotenv
 
-from ingest import ingest_documents, ingest_kb_documents
+from ingest import ingest_policies, ingest_kb_documents
 from crawl import get_source_policy_list
 from db import (
     IndexAttempt,
@@ -14,6 +14,7 @@ from db import (
     Source,
     SourceName,
     SourceStatus,
+    SourceType,
 )
 from mongoengine.queryset.visitor import Q
 
@@ -45,14 +46,14 @@ def index_documents(source: Source) -> None:
 
     attempt.save()
 
-    ## TODO: each source should return a list of PolicyDetails objects from their respective functions
-    ## then common code to loop through each, save to db, download files, convert to text, vectorize and save to db
-    ## want to check if the policy already exists in the db, if so, update the metadata and text, if not, create a new one.  use hash to check if file has changed
+    ## each source returns a list of PolicyDetails objects from their respective functions
+    ## then common code loops through each, save to db, download files, convert to text, vectorize and save to db
+    ## check if the policy already exists in the db, if so, update the metadata and text, if not, create a new one.  use hash to check if file has changed
     ## then when all are done, update the source last_updated field and update the attempt with the final counts
-    ## OPTIONAL: eventually, we could add a check to see if the policy has been removed from the source, and if so, remove it from the db
+    ## TODO: eventually, we could add a check to see if the policy has been removed from the source, and if so, remove it from the db
 
     try:
-        policy_details = get_source_policy_list(source.name)
+        policy_details = get_source_policy_list(source)
 
         if policy_details is None:
             logger.error(f"Source {source.name} not recognized")
@@ -79,10 +80,11 @@ def index_documents(source: Source) -> None:
 
         # loop through each policy, download files, convert to text, vectorize and save to db
         if source.name == SourceName.UCDKB.value:
-            # KB is a special case, we have the data in a JSON file
+            # KB is a special case, we have the data in a local JSON file
+            ## TODO: move to remote storage of JSON file
             ingest_result = ingest_kb_documents(source, policy_details)
         else:
-            ingest_result = ingest_documents(source, policy_details)
+            ingest_result = ingest_policies(source, policy_details)
 
         logger.info(f"Indexing source {source.name} successful.")
 
@@ -124,6 +126,9 @@ def index_documents(source: Source) -> None:
                 f"Source {source.name} has failed {source.failure_count} times. Disabling."
             )
             source.status = SourceStatus.FAILED
+
+        attempt.save()
+        source.save()
 
 
 def cleanup_old_attempts():
@@ -192,6 +197,7 @@ def tmp_reset_db():
     source = Source(
         name=SourceName.UCDAPM.value,
         url="https://policy.ucop.edu/",
+        type=SourceType.CUSTOM,
         refresh_frequency=RefreshFrequency.DAILY,
         last_updated=datetime.now(timezone.utc) - timedelta(days=30),
         status=SourceStatus.ACTIVE,
@@ -210,6 +216,7 @@ def ensure_default_source():
         source = Source(
             name=SourceName.UCDAPM.value,
             url="https://policy.ucop.edu/",
+            type=SourceType.CUSTOM,
             refresh_frequency=RefreshFrequency.DAILY,
             last_updated=datetime.now(timezone.utc) - timedelta(days=30),
             status=SourceStatus.ACTIVE,

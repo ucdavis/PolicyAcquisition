@@ -39,9 +39,17 @@ class SourceName(Enum):
     UCDKB = "UCDKB"
 
 
+class SourceType(Enum):
+    CUSTOM = "CUSTOM"  # Custom source (ex: ucop, ellucid)
+    RECURSIVE = "RECURSIVE"  # Given a base site, index everything under that path
+    SITEMAP = "SITEMAP"  # Given a sitemap.xml URL, parse all the pages in it
+    SINGLE = "SINGLE"  # Given a URL, index only the given page (unsupported)
+
+
 class Source(Document):
     name = StringField(required=True)
     url = StringField(required=True)
+    type = EnumField(SourceType, required=True)
     last_updated = DateTimeField(required=True)
     last_failed = DateTimeField(required=False)
     refresh_frequency = EnumField(RefreshFrequency, required=True)

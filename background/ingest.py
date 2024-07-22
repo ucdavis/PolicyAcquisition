@@ -19,7 +19,10 @@ from typing import List, Tuple
 import uuid
 
 import requests
-from background.extract import extract_text_from_pdf
+from background.extract import (
+    cleanup_extracted_text,
+    extract_text_from_policy_file,
+)
 from db import IndexedDocument, Source
 from logger import log_memory_usage, setup_logger
 from store import vectorize_text
@@ -89,8 +92,11 @@ def wait_before_next_request():
     time.sleep(random.uniform(1, 3))  # Sleep for 1 to 3 seconds
 
 
-# download the document and return a path to the downloaded file
-def download_pdf(url: str, dir: str) -> str:
+def download_policy(url: str, dir: str) -> str:
+    """
+    Download a policy from the given URL and save it to the specified directory.
+    Will determine if file is PDF or text file and add the appropriate extension.
+    """
     headers = {"User-Agent": user_agent}
     response = request_with_retry(
         url, headers=headers, allow_redirects=True, timeout=60
@@ -102,13 +108,22 @@ def download_pdf(url: str, dir: str) -> str:
 
     response.raise_for_status()
 
-    unique_filename = f"{uuid.uuid4()}.pdf"
-    pdf_path = os.path.join(dir, unique_filename)
+    file_type = "txt"  # default to text
 
-    with open(pdf_path, "wb") as file:
+    # check if the response is a PDF
+    if "Content-Type" in response.headers:
+        content_type = response.headers["Content-Type"]
+        if "application/pdf" in content_type:
+            file_type = "pdf"
+
+    unique_filename = f"{uuid.uuid4()}.{file_type}"
+
+    file_path = os.path.join(dir, unique_filename)
+
+    with open(file_path, "wb") as file:
         file.write(response.content)
 
-    return pdf_path
+    return file_path
 
 
 def calculate_file_hash(file_path: str) -> str:
@@ -123,19 +138,17 @@ def get_document_by_url(url: str) -> IndexedDocument:
     return IndexedDocument.objects(url=url).first()
 
 
-def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestResult:
+def ingest_policies(source: Source, policies: List[PolicyDetails]) -> IngestResult:
     start_time = datetime.now(timezone.utc)
     num_docs_indexed = 0
     num_new_docs = 0
 
     with tempfile.TemporaryDirectory() as temp_dir:
         for policy in policies:
-            logger.info(f"Processing document {policy.url}")
+            logger.info(f"Processing policy {policy.url}")
             log_memory_usage(logger)
 
-            # TODO: for now it's all PDF, but we'll need to handle other file types
-
-            # download the document
+            # download the policy at the given url
             # calculate the file hash
             # check if it exists in the database
             # extract the text
@@ -147,41 +160,45 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
                 logger.warning(f"Policy is None, skipping")
                 continue
 
-            local_pdf_path = download_pdf(policy.url, temp_dir)
+            local_policy_path = download_policy(policy.url, temp_dir)
 
-            if not local_pdf_path:
+            if not local_policy_path:
                 logger.error(f"Failed to download pdf at {policy.url}. ")
                 continue
 
-            pdf_hash = calculate_file_hash(local_pdf_path)
+            policy_file_hash = calculate_file_hash(local_policy_path)
 
             document = get_document_by_url(policy.url)
 
             # if the document exists and hasn't changed, skip
-            if document and document.metadata.get("hash") == pdf_hash:
+            if document and document.metadata.get("hash") == policy_file_hash:
                 logger.info(f"Document {policy.url} has not changed, skipping")
                 # if we skip a document, let's wait a bit to avoid rate limiting
                 wait_before_next_request()
                 continue
 
-            extracted_text = extract_text_from_pdf(local_pdf_path, policy.url)
+            extracted_text = extract_text_from_policy_file(local_policy_path, policy)
 
             if not extracted_text:
-                logger.warning(f"No text extracted from {local_pdf_path}")
+                logger.warning(f"No text extracted from {local_policy_path}")
                 continue
+
+            extracted_text = cleanup_extracted_text(extracted_text)
 
             # add some metadata
             vectorized_document = policy.to_vectorized_document(extracted_text)
-            vectorized_document.metadata.hash = pdf_hash
+            vectorized_document.metadata.hash = policy_file_hash
             vectorized_document.metadata.content_length = len(extracted_text)
             vectorized_document.metadata.scope = source.name
+
+            # if we haven't seen this document before, increment the count
+            num_new_docs += 1 if not document else 0
+            num_docs_indexed += 1  # record the indexing either way
 
             result = vectorize_text(vectorized_document)
 
             update_document(
                 source,
-                num_docs_indexed,
-                num_new_docs,
                 policy,
                 document,
                 vectorized_document,
@@ -206,8 +223,6 @@ def ingest_documents(source: Source, policies: List[PolicyDetails]) -> IngestRes
 
 def update_document(
     source: Source,
-    num_docs_indexed: int,
-    num_new_docs: int,
     policy: PolicyDetails,
     document: IndexedDocument,
     vectorized_document: VectorDocument,
@@ -215,10 +230,8 @@ def update_document(
 ):
     if result:
         logger.info(f"Successfully indexed document {policy.url}")
-        num_docs_indexed += 1
         if not document:
             # new doc we have never seen, create it
-            num_new_docs += 1
             document = IndexedDocument(
                 url=policy.url,
                 metadata=vectorized_document.metadata.to_dict(),
@@ -272,12 +285,14 @@ def ingest_kb_documents(
         vectorized_document.metadata.content_length = len(text)
         vectorized_document.metadata.scope = source.name
 
+        # if we haven't seen this document before, increment the count
+        num_new_docs += 1 if not document else 0
+        num_docs_indexed += 1  # record the indexing either way
+
         result = vectorize_text(vectorized_document)
 
         update_document(
             source,
-            num_docs_indexed,
-            num_new_docs,
             policy,
             document,
             vectorized_document,
