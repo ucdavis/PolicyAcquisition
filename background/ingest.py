@@ -186,12 +186,14 @@ def ingest_policies(source: Source, policies: List[PolicyDetails]) -> IngestResu
             vectorized_document.metadata.content_length = len(extracted_text)
             vectorized_document.metadata.scope = source.name
 
+            # if we haven't seen this document before, increment the count
+            num_new_docs += 1 if not document else 0
+            num_docs_indexed += 1  # record the indexing either way
+
             result = vectorize_text(vectorized_document)
 
             update_document(
                 source,
-                num_docs_indexed,
-                num_new_docs,
                 policy,
                 document,
                 vectorized_document,
@@ -216,8 +218,6 @@ def ingest_policies(source: Source, policies: List[PolicyDetails]) -> IngestResu
 
 def update_document(
     source: Source,
-    num_docs_indexed: int,
-    num_new_docs: int,
     policy: PolicyDetails,
     document: IndexedDocument,
     vectorized_document: VectorDocument,
@@ -225,10 +225,8 @@ def update_document(
 ):
     if result:
         logger.info(f"Successfully indexed document {policy.url}")
-        num_docs_indexed += 1
         if not document:
             # new doc we have never seen, create it
-            num_new_docs += 1
             document = IndexedDocument(
                 url=policy.url,
                 metadata=vectorized_document.metadata.to_dict(),
@@ -282,12 +280,14 @@ def ingest_kb_documents(
         vectorized_document.metadata.content_length = len(text)
         vectorized_document.metadata.scope = source.name
 
+        # if we haven't seen this document before, increment the count
+        num_new_docs += 1 if not document else 0
+        num_docs_indexed += 1  # record the indexing either way
+
         result = vectorize_text(vectorized_document)
 
         update_document(
             source,
-            num_docs_indexed,
-            num_new_docs,
             policy,
             document,
             vectorized_document,
