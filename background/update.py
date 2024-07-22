@@ -127,6 +127,9 @@ def index_documents(source: Source) -> None:
             )
             source.status = SourceStatus.FAILED
 
+        attempt.save()
+        source.save()
+
 
 def cleanup_old_attempts():
     """Set to failed any index_attempts that are INPROGRESS and started more than 1 day ago"""

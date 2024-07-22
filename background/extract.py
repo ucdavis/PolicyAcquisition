@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from pypdf import PdfReader
 
 from background.logger import setup_logger
-from policy_details import PolicyDetails
+from models.policy_details import PolicyDetails
 
 load_dotenv()
 
