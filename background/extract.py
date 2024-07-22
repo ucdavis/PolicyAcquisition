@@ -1,4 +1,5 @@
 import os
+import re
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.ai.documentintelligence.models import AnalyzeResult, AnalyzeDocumentRequest
@@ -138,3 +139,16 @@ def extract_text_from_pdf(input_path: str, policy: PolicyDetails) -> str:
             return text
     except Exception as e:
         logger.error(f"Error extracting text from {policy.url}: {e}")
+
+
+def cleanup_extracted_text(text: str) -> str:
+    """
+    Clean up the extracted text by removing extra whitespace and redundant newlines (more than one in a row).
+    """
+    # Normalize whitespace by replacing multiple spaces with a single space
+    text = " ".join(text.split())
+
+    # Replace multiple newlines with a single newline
+    text = re.sub(r"\n+", "\n", text)
+
+    return text

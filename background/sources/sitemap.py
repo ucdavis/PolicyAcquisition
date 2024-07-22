@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
-def get_sitemap_links(sitemap_url):
+def get_sitemap_policies(sitemap_url) -> List[PolicyDetails]:
     """
     Given a sitemap.xml URL, read the urls and return a list of PolicyDetails objects
     """
@@ -33,7 +33,7 @@ def get_sitemap_links(sitemap_url):
 
     policy_details_list: List[PolicyDetails] = []
 
-    soup = BeautifulSoup(response.content, "html.parser")
+    soup = BeautifulSoup(response.text, features="xml")
 
     url_tags = soup.find_all("url")
 
@@ -57,14 +57,14 @@ def get_sitemap_links(sitemap_url):
             )
             policy_details_list.append(policy_details)
 
-    if len(policy_details) == 0 and len(soup.find_all("urlset")) == 0:
+    if len(policy_details_list) == 0 and len(soup.find_all("urlset")) == 0:
         # the given url doesn't look like a sitemap
         logger.error(
             f"No URLs found in sitemap {sitemap_url}. Check URL and ensure it's a valid sitemap.xml"
         )
         return []
 
-    if len(policy_details) == 0:
+    if len(policy_details_list) == 0:
         raise ValueError(f"No URLs found in sitemap {sitemap_url}")
 
     return policy_details_list

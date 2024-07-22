@@ -2,6 +2,7 @@
 # Will call the appropriate method based on the source name and return a list of PolicyDetails objects
 
 from background.sources.kb import get_kb_details
+from background.sources.sitemap import get_sitemap_policies
 from db import Source, SourceName, SourceType
 from logger import setup_logger
 
@@ -20,7 +21,7 @@ def get_source_policy_list(source: Source) -> list[PolicyDetails] | None:
     Get the list of policies to index for the given source
     """
     if source.type == SourceType.SITEMAP:
-        return []
+        return get_sitemap_policies(source.url)
     elif source.type == SourceType.RECURSIVE:
         return []  # TODO: implement recursive crawling
     elif source.type == SourceType.CUSTOM:

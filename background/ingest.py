@@ -19,7 +19,11 @@ from typing import List, Tuple
 import uuid
 
 import requests
-from background.extract import extract_text_from_pdf, extract_text_from_policy_file
+from background.extract import (
+    cleanup_extracted_text,
+    extract_text_from_pdf,
+    extract_text_from_policy_file,
+)
 from db import IndexedDocument, Source
 from logger import log_memory_usage, setup_logger
 from store import vectorize_text
@@ -179,6 +183,8 @@ def ingest_policies(source: Source, policies: List[PolicyDetails]) -> IngestResu
             if not extracted_text:
                 logger.warning(f"No text extracted from {local_policy_path}")
                 continue
+
+            extracted_text = cleanup_extracted_text(extracted_text)
 
             # add some metadata
             vectorized_document = policy.to_vectorized_document(extracted_text)
